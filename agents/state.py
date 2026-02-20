@@ -41,3 +41,4 @@ class LocalizationState(TypedDict):
 
     # 내부 전달용
     _updates: list[dict]          # writer → app.py 시트 업데이트 목록
+    _needs_retry: list[dict]      # reviewer → translator 재번역 필요 항목

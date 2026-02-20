@@ -9,6 +9,7 @@ from agents.prompts import build_reviewer_prompt
 from config.constants import (
     CHUNK_SIZE,
     LLM_MODEL,
+    MAX_RETRY_COUNT,
     REQUIRED_COLUMNS,
     SUPPORTED_LANGUAGES,
 )
@@ -45,15 +46,21 @@ def reviewer_node(state: LocalizationState) -> dict:
     """
     번역 결과물 검수:
     1. Glossary 후처리 (JA 등급명 강제 치환)
-    2. 정규식 태그 검증 (경고 기록, 통과)
-    3. Glossary 준수 여부 검증 (경고 기록, 통과)
+    2. 정규식 태그 검증 → 실패 시 재시도(최대 3회) 또는 검수실패 마킹
+    3. Glossary 준수 여부 검증 (경고 기록)
     4. AI 품질 검증 + 변경 사유 생성 (청크 배치 LLM 호출)
 
-    검증 이슈는 사유에 기록하되, 번역 결과는 항상 review_results에 포함.
+    태그 검증 실패 항목은 _needs_retry로 translator에 재전달.
+    3회 재시도 후에도 실패하면 failed_rows에 검수실패로 마킹.
     """
     original_data = state.get("original_data", [])
     translation_results = list(state.get("translation_results", []))
+
+    # 이전 라운드의 통과 결과를 보존 (재시도 시 누적)
+    prev_review_results = list(state.get("review_results", []))
+
     failed_rows = list(state.get("failed_rows", []))
+    retry_count = dict(state.get("retry_count", {}))
     logs = list(state.get("logs", []))
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
@@ -66,8 +73,10 @@ def reviewer_node(state: LocalizationState) -> dict:
 
     api_key = st.secrets.get("XAI_API_KEY", "")
 
-    # ── Step 1~3: 정규식/Glossary 검증 (LLM 불필요, 즉시 처리) ──
+    # ── Step 1~3: 정규식/Glossary 검증 + 재시도 분기 ──
     validated_items = []
+    needs_retry_items = []
+
     for item in translation_results:
         key = item["key"]
         lang = item["lang"]
@@ -92,16 +101,51 @@ def reviewer_node(state: LocalizationState) -> dict:
 
         # 정규식 태그 검증
         tag_result = validate_tags(source_ko, translated)
-        warnings = []
-        if not tag_result["valid"]:
-            warnings.extend(tag_result["errors"])
-            logs.append(f"[Node 4] 태그 경고 — {key} ({lang}): {'; '.join(tag_result['errors'])}")
 
-        # Glossary 준수 여부 검증
+        if not tag_result["valid"]:
+            count_key = f"{key}_{lang}"
+            current = retry_count.get(count_key, 0)
+
+            if current < MAX_RETRY_COUNT:
+                retry_count[count_key] = current + 1
+                shared_comments = original_row.get(
+                    REQUIRED_COLUMNS["shared_comments"], ""
+                )
+                needs_retry_items.append({
+                    "key": key,
+                    "lang": lang,
+                    "source_ko": source_ko,
+                    "shared_comments": shared_comments,
+                    "translated": translated,
+                    "feedback": tag_result["errors"],
+                })
+                logs.append(
+                    f"[Node 4] 태그 검증 실패 → 재번역 요청 "
+                    f"({current + 1}/{MAX_RETRY_COUNT}) — {key} ({lang})"
+                )
+                continue
+            else:
+                failed_rows.append({
+                    "key": key,
+                    "lang": lang,
+                    "reason": f"태그 검증 {MAX_RETRY_COUNT}회 실패: "
+                              f"{'; '.join(tag_result['errors'])}",
+                })
+                logs.append(
+                    f"[Node 4] 태그 검증 {MAX_RETRY_COUNT}회 초과 → "
+                    f"검수실패 — {key} ({lang})"
+                )
+                continue
+
+        # Glossary 준수 여부 검증 (경고만, 재시도 트리거 아님)
+        warnings = []
         glossary_result = check_glossary_compliance(translated, lang, source_ko)
         if not glossary_result["compliant"]:
             warnings.extend(glossary_result["violations"])
-            logs.append(f"[Node 4] 글로서리 경고 — {key} ({lang}): {'; '.join(glossary_result['violations'])}")
+            logs.append(
+                f"[Node 4] 글로서리 경고 — {key} ({lang}): "
+                f"{'; '.join(glossary_result['violations'])}"
+            )
 
         lang_col = SUPPORTED_LANGUAGES.get(lang, "")
         old_translation = original_row.get(lang_col, "")
@@ -115,7 +159,10 @@ def reviewer_node(state: LocalizationState) -> dict:
             "warnings": warnings,
         })
 
-    logs.append(f"[Node 4] 정규식/Glossary 검증 완료: {len(validated_items)}건")
+    logs.append(
+        f"[Node 4] 정규식/Glossary 검증: 통과 {len(validated_items)}건, "
+        f"재시도 {len(needs_retry_items)}건"
+    )
 
     # ── Step 4: AI 품질 검증 (청크 배치 LLM 호출) ──
     lang_groups: dict[str, list[dict]] = {}
@@ -177,7 +224,7 @@ def reviewer_node(state: LocalizationState) -> dict:
                 )
 
     # ── 최종 review_results 조합 ──
-    review_results = []
+    new_review_results = []
     for item in validated_items:
         key = item["key"]
         lang = item["lang"]
@@ -198,7 +245,7 @@ def reviewer_node(state: LocalizationState) -> dict:
         elif warnings and reason:
             reason = f"{reason} | 경고: {'; '.join(warnings)}"
 
-        review_results.append({
+        new_review_results.append({
             "key": key,
             "lang": lang,
             "translated": item["translated"],
@@ -206,15 +253,18 @@ def reviewer_node(state: LocalizationState) -> dict:
             "reason": reason,
         })
 
+    all_review_results = prev_review_results + new_review_results
+
     logs.append(
-        f"[Node 4] 검수 완료: {len(review_results)}건 통과, "
-        f"{len(failed_rows)}건 실패"
+        f"[Node 4] 검수 완료: 누적 통과 {len(all_review_results)}건, "
+        f"실패 {len(failed_rows)}건, 재시도 대기 {len(needs_retry_items)}건"
     )
 
     return {
-        "review_results": review_results,
+        "review_results": all_review_results,
         "failed_rows": failed_rows,
-        "retry_count": {},
+        "_needs_retry": needs_retry_items,
+        "retry_count": retry_count,
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
         "logs": logs,

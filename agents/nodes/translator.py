@@ -43,12 +43,130 @@ def _build_translation_prompt(rows: list[dict], lang: str) -> str:
     return "\n\n---\n\n".join(items)
 
 
+def _build_retry_prompt(items: list[dict], lang: str) -> str:
+    """재번역 프롬프트 — 이전 번역 실패 피드백 포함"""
+    parts = []
+    for item in items:
+        part = f"Key: {item['key']}\nKorean: {item['source_ko']}"
+        if item.get("shared_comments"):
+            part += f"\nShared Comments (참고): {item['shared_comments']}"
+        part += f"\n이전 번역 (오류 있음): {item['translated']}"
+        part += f"\n오류: {'; '.join(item['feedback'])}"
+        part += (
+            "\n위 오류를 수정하여 다시 번역하세요. "
+            "특히 원문의 포맷팅 태그({변수}, <color>, \\n 등)를 "
+            "번역 결과에 동일하게 보존해야 합니다."
+        )
+        parts.append(part)
+    return "\n\n---\n\n".join(parts)
+
+
+def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
+    """재시도 모드: 실패한 항목만 재번역"""
+    retry_count = dict(state.get("retry_count", {}))
+    logs = list(state.get("logs", []))
+    total_input_tokens = state.get("total_input_tokens", 0)
+    total_output_tokens = state.get("total_output_tokens", 0)
+
+    api_key = st.secrets.get("XAI_API_KEY", "")
+
+    # 언어별 그룹핑
+    retry_by_lang: dict[str, list[dict]] = {}
+    for item in needs_retry:
+        retry_by_lang.setdefault(item["lang"], []).append(item)
+
+    all_results = []
+
+    for lang, items in retry_by_lang.items():
+        glossary_text = _format_glossary_text(lang)
+        system_prompt = build_translator_prompt(lang, glossary_text)
+        total_chunks = (len(items) + CHUNK_SIZE - 1) // CHUNK_SIZE
+
+        logs.append(
+            f"[Node 3] {lang.upper()} 재번역 대상: {len(items)}건"
+        )
+
+        for chunk_idx in range(total_chunks):
+            start = chunk_idx * CHUNK_SIZE
+            end = min(start + CHUNK_SIZE, len(items))
+            chunk = items[start:end]
+
+            user_prompt = _build_retry_prompt(chunk, lang)
+            logs.append(
+                f"[Node 3] {lang.upper()} 재번역 청크 "
+                f"{chunk_idx + 1}/{total_chunks} ({len(chunk)}건) 처리 중..."
+            )
+
+            try:
+                response = litellm.completion(
+                    model=LLM_MODEL,
+                    api_key=api_key,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    timeout=120,
+                )
+
+                total_input_tokens += getattr(
+                    response.usage, "prompt_tokens", 0
+                )
+                total_output_tokens += getattr(
+                    response.usage, "completion_tokens", 0
+                )
+
+                content = response.choices[0].message.content.strip()
+                if content.startswith("```"):
+                    content = content.split("\n", 1)[-1].rsplit("```", 1)[0]
+
+                translated_items = json.loads(content)
+
+                for ti in translated_items:
+                    translated_text = ti.get("translated", "")
+                    translated_text = translated_text.replace('\n', '\\n')
+                    translated_text = translated_text.replace('\t', '\\t')
+                    all_results.append({
+                        "key": ti["key"],
+                        "lang": lang,
+                        "translated": translated_text,
+                    })
+
+            except Exception as e:
+                logs.append(
+                    f"[Node 3] 재번역 오류 (청크 {chunk_idx + 1}): {e}"
+                )
+                for item in chunk:
+                    all_results.append({
+                        "key": item["key"],
+                        "lang": lang,
+                        "translated": "",
+                        "error": str(e),
+                    })
+
+    return {
+        "translation_results": all_results,
+        "_needs_retry": [],
+        "total_input_tokens": total_input_tokens,
+        "total_output_tokens": total_output_tokens,
+        "retry_count": retry_count,
+        "logs": logs,
+    }
+
+
 def translator_node(state: LocalizationState) -> dict:
     """
     청크 단위 번역 수행.
-    모드 A: 전체 행 번역
-    모드 B: 타겟 언어 빈칸인 행만 번역
+    _needs_retry가 있으면 해당 항목만 재번역 (retry 모드).
+    없으면 정상 번역:
+      모드 A: 전체 행 번역
+      모드 B: 타겟 언어 빈칸인 행만 번역
     """
+    # 재시도 모드 확인
+    needs_retry = state.get("_needs_retry", [])
+    if needs_retry:
+        return _translate_retry(state, needs_retry)
+
+    # ── 정상 번역 모드 ──
     original_data = state.get("original_data", [])
     mode = state.get("mode", "A")
     target_languages = state.get("target_languages", [])
@@ -74,7 +192,7 @@ def translator_node(state: LocalizationState) -> dict:
         working_data.append(row_copy)
 
     # 번역 결과 저장
-    all_results = list(state.get("translation_results", []))
+    all_results = []
 
     api_key = st.secrets.get("XAI_API_KEY", "")
 
@@ -95,7 +213,7 @@ def translator_node(state: LocalizationState) -> dict:
 
             if mode == "B":
                 existing = row.get(lang_col, "")
-                if existing:
+                if existing and existing.strip():
                     continue
 
             target_rows.append(row)

@@ -388,6 +388,7 @@ if start_button:
                 "total_output_tokens": 0,
                 "logs": [],
                 "_updates": [],
+                "_needs_retry": [],
             }
 
             config = {"configurable": {"thread_id": st.session_state.thread_id}}
@@ -549,6 +550,13 @@ if st.session_state.current_step == "final_review":
             st.session_state.graph_result.get("failed_rows", [])
         )
         st.dataframe(failed_df, use_container_width=True)
+        failed_csv = failed_df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="검수 실패 행 (CSV)",
+            data=failed_csv,
+            file_name="review_failed_rows.csv",
+            mime="text/csv",
+        )
 
     st.markdown("<div style='height: 12px'></div>", unsafe_allow_html=True)
 
@@ -673,7 +681,7 @@ if st.session_state.current_step == "done":
     st.markdown("<div style='height: 12px'></div>", unsafe_allow_html=True)
 
     # 다운로드 버튼 그리드
-    dl_cols = st.columns(3)
+    dl_cols = st.columns(4)
     with dl_cols[0]:
         if st.session_state.backup_csv:
             st.download_button(
@@ -693,6 +701,22 @@ if st.session_state.current_step == "done":
                 use_container_width=True,
             )
     with dl_cols[2]:
+        _failed = (
+            st.session_state.graph_result.get("failed_rows", [])
+            if st.session_state.graph_result else []
+        )
+        if _failed:
+            _failed_csv = pd.DataFrame(_failed).to_csv(
+                index=False
+            ).encode("utf-8")
+            st.download_button(
+                label="검수 실패 (CSV)",
+                data=_failed_csv,
+                file_name="review_failed_rows.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+    with dl_cols[3]:
         if st.session_state.logs:
             log_text = "\n".join(st.session_state.logs)
             st.download_button(
