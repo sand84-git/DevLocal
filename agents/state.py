@@ -1,0 +1,40 @@
+"""LangGraph State 정의 — LocalizationState TypedDict"""
+
+from typing import Optional, TypedDict
+
+
+class LocalizationState(TypedDict):
+    # 작업 설정
+    sheet_name: str
+    mode: str  # "A" or "B"
+    target_languages: list[str]
+
+    # 데이터
+    original_data: list[dict]       # 원본 시트 데이터
+    backup_data: list[dict]         # 백업용
+    ko_review_results: list[dict]   # 한국어 검수 결과
+    translation_results: list[dict] # 번역 결과
+    review_results: list[dict]      # 검수 결과
+    failed_rows: list[dict]         # 검수실패 행 목록
+
+    # 리포트
+    diff_report_ko: Optional[str]            # 한국어 변경 리포트 (CSV 경로)
+    diff_report_translation: Optional[str]   # 번역 변경 리포트 (CSV 경로)
+
+    # HITL 제어
+    wait_for_ko_approval: bool
+    ko_approval_result: Optional[str]        # "approved" or "rejected"
+    wait_for_final_approval: bool
+    final_approval_result: Optional[str]
+
+    # 진행 상태
+    current_chunk_index: int
+    total_chunks: int
+    retry_count: dict  # {row_key: retry_count}
+
+    # 비용 추적
+    total_input_tokens: int
+    total_output_tokens: int
+
+    # 로그
+    logs: list[str]
