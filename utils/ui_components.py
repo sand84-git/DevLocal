@@ -323,7 +323,7 @@ def inject_custom_css():
        ══════════════════════════════════════════ */
     .step-indicator {
         display: flex;
-        align-items: center;
+        flex-wrap: wrap;
         justify-content: center;
         padding: 0.9rem 2rem;
         background: var(--bg-card);
@@ -332,6 +332,12 @@ def inject_custom_css():
         margin-bottom: 1.2rem;
         gap: 0;
         animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .step-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
     }
     .step-item { display: flex; align-items: center; gap: 7px; }
     .step-circle {
@@ -364,8 +370,77 @@ def inject_custom_css():
     .step-connector.pending { background-color: var(--border); }
 
     /* ══════════════════════════════════════════
+       Step Progress — Claude-style spinner
+       ══════════════════════════════════════════ */
+    .step-progress {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 0.4rem 0 0.2rem;
+        border-top: 1px solid var(--border-light);
+        margin-top: 0.6rem;
+    }
+    .step-progress-spinner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .sparkle {
+        display: inline-block;
+        font-size: 0.9rem;
+        color: var(--accent);
+        animation: sparkle-spin 3s linear infinite;
+    }
+    .progress-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-family: 'DM Sans', sans-serif;
+        letter-spacing: -0.2px;
+    }
+    .progress-label::after {
+        content: '';
+        animation: label-dots 1.8s steps(3, end) infinite;
+    }
+    .step-progress-track {
+        width: 100%;
+        max-width: 360px;
+        height: 3px;
+        background: var(--border);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .step-progress-bar {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 2px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .step-progress-bar.indeterminate {
+        width: 40%;
+        animation: progress-slide 1.8s ease-in-out infinite;
+    }
+
+    /* ══════════════════════════════════════════
        Animations
        ══════════════════════════════════════════ */
+    @keyframes sparkle-spin {
+        0%   { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @keyframes label-dots {
+        0%   { content: ''; }
+        33%  { content: '.'; }
+        66%  { content: '..'; }
+        100% { content: '...'; }
+    }
+    @keyframes progress-slide {
+        0%   { margin-left: 0; }
+        50%  { margin-left: 60%; }
+        100% { margin-left: 0; }
+    }
     @keyframes pulse-green {
         0%, 100% { box-shadow: 0 0 0 0 rgba(74,124,89,0.35); }
         50% { box-shadow: 0 0 0 8px rgba(74,124,89,0); }
@@ -472,7 +547,7 @@ def inject_custom_css():
         padding: 0.8rem 1rem;
         font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
         font-size: 0.72rem; line-height: 1.7;
-        max-height: 200px; overflow-y: auto; color: var(--text-secondary);
+        max-height: 160px; overflow-y: auto; color: var(--text-secondary);
     }
     .log-terminal .log-line { padding: 1px 0; }
     .log-terminal .log-success { color: var(--success); }
@@ -643,8 +718,13 @@ def inject_custom_css():
 # ── Component Renderers ──────────────────────────────────────────────
 
 
-def render_step_indicator(current_step: str):
-    """3단계 프로그레스 인디케이터"""
+def render_step_indicator(current_step: str, progress: dict = None):
+    """3단계 프로그레스 인디케이터 (progress 통합)
+
+    Args:
+        current_step: 현재 단계 ("idle", "loading", "ko_review", "translating", ...)
+        progress: {"label": "AI 번역 진행중", "value": 0.5} 또는 None/{}
+    """
     steps = [
         {"label": "한국어 검수", "key": "step1"},
         {"label": "번역 / 검수", "key": "step2"},
@@ -676,18 +756,64 @@ def render_step_indicator(current_step: str):
             cls = "pending"
         return f'<div class="step-connector {cls}"></div>'
 
-    parts = []
+    # 스텝 행 구성
+    row_parts = []
     for i, (step, state) in enumerate(zip(steps, states)):
         if i > 0:
-            parts.append(connector(states[i - 1], state))
-        parts.append(
+            row_parts.append(connector(states[i - 1], state))
+        row_parts.append(
             f'<div class="step-item">'
             f"  {circle(state, i + 1)}"
             f'  <span class="step-label {state}">{step["label"]}</span>'
             f"</div>"
         )
+    step_row_html = f'<div class="step-row">{"".join(row_parts)}</div>'
+
+    # 프로그레스 영역 (있을 때만)
+    progress_html = ""
+    if progress and progress.get("label") and current_step not in ("idle", "done"):
+        label = html_module.escape(progress["label"])
+        value = progress.get("value", 0)
+        bar_cls = "step-progress-bar indeterminate" if value <= 0 else "step-progress-bar"
+        bar_style = f"width: {int(value * 100)}%;" if value > 0 else ""
+        progress_html = (
+            f'<div class="step-progress">'
+            f'  <div class="step-progress-spinner">'
+            f'    <span class="sparkle">✦</span>'
+            f'    <span class="progress-label">{label}</span>'
+            f'  </div>'
+            f'  <div class="step-progress-track">'
+            f'    <div class="{bar_cls}" style="{bar_style}"></div>'
+            f'  </div>'
+            f'</div>'
+        )
+
     st.markdown(
-        f'<div class="step-indicator">{"".join(parts)}</div>',
+        f'<div class="step-indicator">{step_row_html}{progress_html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_step_progress(label: str, value: float):
+    """스텝 인디케이터 아래 Claude-style 프로그레스 스피너.
+
+    Args:
+        label: 현재 진행 라벨 (예: "AI 번역 진행중")
+        value: 0.0~1.0 진행률. 0이면 indeterminate 애니메이션.
+    """
+    safe_label = html_module.escape(label)
+    bar_cls = "step-progress-bar indeterminate" if value <= 0 else "step-progress-bar"
+    bar_width = f"width: {int(value * 100)}%;" if value > 0 else ""
+    st.markdown(
+        f'<div class="step-progress">'
+        f'  <div class="step-progress-spinner">'
+        f'    <span class="sparkle">✦</span>'
+        f'    <span class="progress-label">{safe_label}</span>'
+        f'  </div>'
+        f'  <div class="step-progress-track">'
+        f'    <div class="{bar_cls}" style="{bar_width}"></div>'
+        f'  </div>'
+        f'</div>',
         unsafe_allow_html=True,
     )
 

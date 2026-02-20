@@ -22,8 +22,9 @@ def writer_node(state: LocalizationState) -> dict:
 
     # 업데이트 목록 생성
     updates = []
+    completed_keys = set()  # Tool_Status 중복 방지
 
-    # 성공한 번역 결과 반영
+    # 성공한 번역 결과 반영 — 실제 변경된 셀만
     for result in review_results:
         key = result["key"]
         lang = result["lang"]
@@ -37,20 +38,25 @@ def writer_node(state: LocalizationState) -> dict:
         if not lang_col:
             continue
 
-        updates.append({
-            "row_index": row_idx,
-            "column_name": lang_col,
-            "value": translated,
-            "change_type": "translation",
-        })
+        # 원본 값과 비교 — 실제로 변경된 경우만 업데이트 & 컬러링
+        original_value = original_data[row_idx].get(lang_col, "")
+        if translated != original_value:
+            updates.append({
+                "row_index": row_idx,
+                "column_name": lang_col,
+                "value": translated,
+                "change_type": "translation",
+            })
 
-        # Tool_Status를 최종완료로 업데이트
-        updates.append({
-            "row_index": row_idx,
-            "column_name": TOOL_STATUS_COLUMN,
-            "value": Status.COMPLETED,
-            "change_type": "completed",
-        })
+        # Tool_Status를 최종완료로 업데이트 (변경 여부와 무관하게)
+        if key not in completed_keys:
+            completed_keys.add(key)
+            updates.append({
+                "row_index": row_idx,
+                "column_name": TOOL_STATUS_COLUMN,
+                "value": Status.COMPLETED,
+                "change_type": "completed",
+            })
 
     # 검수실패 행 마킹
     failed_keys = set()
@@ -66,10 +72,11 @@ def writer_node(state: LocalizationState) -> dict:
                 "change_type": "review_failed",
             })
 
-    success_count = len(review_results)
+    changed_count = sum(1 for u in updates if u.get("change_type") == "translation")
+    unchanged_count = len(review_results) - changed_count
     fail_count = len(failed_keys)
     logs.append(
-        f"[Node 5] 업데이트 준비 완료: 성공 {success_count}건, 실패 {fail_count}건"
+        f"[Node 5] 업데이트 준비: 변경 {changed_count}건, 변경없음 {unchanged_count}건, 실패 {fail_count}건"
     )
 
     return {

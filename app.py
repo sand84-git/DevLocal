@@ -1,9 +1,38 @@
 """게임 로컬라이징 자동화 툴 — Streamlit 메인 앱"""
 
+import json
 import uuid
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 from langgraph.types import Command
+
+# ── 로컬 설정 파일 (시트 URL 영속 저장) ──────────────────────────────
+_CONFIG_PATH = Path(__file__).parent / ".app_config.json"
+
+
+def _load_config() -> dict:
+    """로컬 설정 파일에서 저장된 값을 읽어온다."""
+    if _CONFIG_PATH.exists():
+        try:
+            return json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def _save_config(data: dict):
+    """로컬 설정 파일에 값을 저장한다."""
+    try:
+        existing = _load_config()
+        existing.update(data)
+        _CONFIG_PATH.write_text(
+            json.dumps(existing, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
 
 from agents.graph import build_graph
 from config.constants import (
@@ -32,7 +61,6 @@ from utils.diff_report import (
 from utils.ui_components import (
     inject_custom_css,
     render_step_indicator,
-    render_pipeline,
     render_card_start,
     render_card_end,
     render_sidebar_logo,
@@ -58,6 +86,8 @@ inject_custom_css()
 
 # ── Session State 초기화 ─────────────────────────────────────────────
 
+_saved_config = _load_config()
+
 _defaults = {
     "thread_id": str(uuid.uuid4()),
     "current_step": "idle",
@@ -74,13 +104,15 @@ _defaults = {
     "cost_summary": None,
     "graph_result": None,
     "translations_applied": False,
-    # URL 고정 관련
-    "saved_url": "",
+    # URL 고정 관련 — 로컬 파일에서 복원
+    "saved_url": _saved_config.get("saved_url", ""),
     "url_editing": False,
     # 백업 폴더
-    "backup_folder": "./backups",
+    "backup_folder": _saved_config.get("backup_folder", "./backups"),
     # 파이프라인 상태
     "pipeline_status": {},
+    # 프로그레스바
+    "step_progress": {},
 }
 for key, default in _defaults.items():
     if key not in st.session_state:
@@ -96,7 +128,7 @@ if "graph" not in st.session_state:
 _PROGRESS_NODES = ["translator", "reviewer", "final_approval"]
 
 
-def _run_translation_streaming(resume_value: str, config: dict):
+def _run_translation_streaming(resume_value: str, config: dict, indicator_slot=None):
     """
     번역 phase를 graph.stream()으로 실행하며 실시간 진행 UI 표시.
     translator → reviewer → final_approval(interrupt) 순서로 진행.
@@ -104,6 +136,11 @@ def _run_translation_streaming(resume_value: str, config: dict):
     app_logs = list(st.session_state.logs)
     graph_logs = []
     log_container = st.empty()
+
+    _TRANS_PROGRESS = {
+        "translator": {"value": 0.50, "label": "품질 검수 진행중"},
+        "reviewer":   {"value": 1.0,  "label": "검수 완료"},
+    }
 
     try:
         for event in st.session_state.graph.stream(
@@ -120,7 +157,7 @@ def _run_translation_streaming(resume_value: str, config: dict):
             if node_logs:
                 graph_logs = node_logs
 
-            # 파이프라인 상태 업데이트
+            # 파이프라인 상태 업데이트 (내부 추적용)
             if node_name in _PROGRESS_NODES:
                 st.session_state.pipeline_status[node_name] = "done"
                 st.session_state.pipeline_status[f"{node_name}_text"] = "완료"
@@ -129,6 +166,13 @@ def _run_translation_streaming(resume_value: str, config: dict):
                     next_node = _PROGRESS_NODES[idx + 1]
                     st.session_state.pipeline_status[next_node] = "active"
                     st.session_state.pipeline_status[f"{next_node}_text"] = "진행중"
+
+            # 인디케이터 내 프로그레스 실시간 업데이트
+            if node_name in _TRANS_PROGRESS and indicator_slot:
+                p = _TRANS_PROGRESS[node_name]
+                st.session_state.step_progress = p
+                with indicator_slot.container():
+                    render_step_indicator("translating", progress=p)
 
             # 로그 터미널 실시간 갱신
             with log_container.container():
@@ -212,6 +256,7 @@ with st.sidebar:
             st.session_state.saved_url = sheet_url
             st.session_state.url_editing = False
             st.session_state.spreadsheet = None
+            _save_config({"saved_url": sheet_url})
             st.rerun()
         elif sheet_url and st.session_state.url_editing:
             st.session_state.url_editing = False
@@ -290,6 +335,8 @@ with st.sidebar:
         disabled=not connected or is_busy,
     )
     if backup_folder:
+        if backup_folder != st.session_state.backup_folder:
+            _save_config({"backup_folder": backup_folder})
         st.session_state.backup_folder = backup_folder
 
     st.divider()
@@ -325,12 +372,11 @@ with st.sidebar:
 
 render_app_header()
 
-# 스텝 인디케이터
-render_step_indicator(st.session_state.current_step)
-
-# 파이프라인 시각화 (idle 이외일 때 표시)
-if st.session_state.current_step != "idle":
-    render_pipeline(st.session_state.pipeline_status)
+# 스텝 인디케이터 (프로그레스 통합, 스트리밍 중 업데이트 가능)
+_indicator_slot = st.empty()
+_step_progress = st.session_state.get("step_progress", {})
+with _indicator_slot.container():
+    render_step_indicator(st.session_state.current_step, progress=_step_progress)
 
 # ── 작업 시작 처리 ────────────────────────────────────────────────────
 
@@ -415,25 +461,74 @@ if start_button:
             "_needs_retry": [],
         }
 
+        # 취소 시 복구용으로 initial_state 저장
+        st.session_state._initial_state = initial_state
+
         config = {"configurable": {"thread_id": st.session_state.thread_id}}
 
-        # 파이프라인 상태: data_backup ~ ko_approval 실행 예정
+        # 파이프라인 상태: data_backup 실행 시작
         st.session_state.pipeline_status = {
             "data_backup": "active",
         }
 
-        result = st.session_state.graph.invoke(initial_state, config=config)
-        st.session_state.graph_result = result
-        st.session_state.logs.extend(result.get("logs", []))
-
-        # invoke 완료 → data_backup ~ ko_review 완료, ko_approval 대기
-        st.session_state.pipeline_status = {
-            "data_backup": "done",
-            "context_glossary": "done",
-            "ko_review": "done",
-            "ko_approval": "active",
-            "ko_approval_text": "승인 대기",
+        # 스트리밍으로 실행 — 노드별 실시간 프로그레스 업데이트
+        _INIT_NODES = ["data_backup", "context_glossary", "ko_review", "ko_approval"]
+        _INIT_PROGRESS = {
+            "data_backup":      {"value": 0.25, "label": "컨텍스트 로드 중"},
+            "context_glossary": {"value": 0.50, "label": "한국어 검수 분석 중"},
+            "ko_review":        {"value": 0.90, "label": "승인 대기"},
         }
+        graph_logs = []
+        log_container = st.empty()
+
+        # 초기 프로그레스 표시 (인디케이터 내부에 통합)
+        st.session_state.step_progress = {"value": 0, "label": "데이터 확인 중"}
+        with _indicator_slot.container():
+            render_step_indicator("loading", progress=st.session_state.step_progress)
+
+        for event in st.session_state.graph.stream(
+            initial_state, config=config, stream_mode="updates"
+        ):
+            if "__interrupt__" in event:
+                break
+
+            node_name = list(event.keys())[0]
+            node_output = event[node_name]
+
+            # 로그 수집
+            node_logs = node_output.get("logs", [])
+            if node_logs:
+                graph_logs = node_logs
+
+            # 파이프라인 내부 상태 업데이트 (추적용)
+            if node_name in _INIT_NODES:
+                st.session_state.pipeline_status[node_name] = "done"
+                idx = _INIT_NODES.index(node_name)
+                if idx + 1 < len(_INIT_NODES):
+                    next_node = _INIT_NODES[idx + 1]
+                    st.session_state.pipeline_status[next_node] = "active"
+
+            # 인디케이터 내 프로그레스 실시간 업데이트
+            if node_name in _INIT_PROGRESS:
+                p = _INIT_PROGRESS[node_name]
+                st.session_state.step_progress = p
+                with _indicator_slot.container():
+                    render_step_indicator("loading", progress=p)
+
+            # 로그 터미널 실시간 갱신
+            with log_container.container():
+                render_log_terminal(graph_logs)
+
+        # 최종 state 수집
+        state_snapshot = st.session_state.graph.get_state(config)
+        result = state_snapshot.values
+        st.session_state.graph_result = result
+        st.session_state.logs.extend(graph_logs)
+
+        # ko_approval 승인 대기 상태로 설정
+        st.session_state.pipeline_status["ko_approval"] = "active"
+        st.session_state.pipeline_status["ko_approval_text"] = "승인 대기"
+        st.session_state.step_progress = {}  # 프로그레스바 숨김
 
         ko_results = result.get("ko_review_results", [])
         if ko_results:
@@ -494,13 +589,17 @@ if st.session_state.current_step == "ko_review":
         and not st.session_state.ko_report_df.empty
         else 0
     )
-    render_card_start(
-        "✏️",
-        "한국어 사전 검수",
-        f"수정 제안 {ko_count}건" if ko_count else "",
-    )
+
+    btn_approve = False
+    btn_reject = False
 
     if ko_count > 0:
+        # 수정 제안이 있을 때만 카드 표시
+        render_card_start(
+            "✏️",
+            "한국어 사전 검수",
+            f"수정 제안 {ko_count}건",
+        )
         st.dataframe(
             style_ko_diff(st.session_state.ko_report_df),
             use_container_width=True,
@@ -511,35 +610,37 @@ if st.session_state.current_step == "ko_review":
             file_name="ko_review_report.csv",
             mime="text/csv",
         )
-    else:
-        st.success("수정 제안 없음 — 원본 한국어가 양호합니다.")
 
-    st.markdown("<div style='height: 12px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 12px'></div>", unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        btn_approve = st.button(
-            "변경 사항 승인 및 번역 시작",
-            type="primary",
-            use_container_width=True,
-        )
-    with col2:
-        btn_reject = st.button(
-            "제안 무시하고 원본 그대로 번역",
-            use_container_width=True,
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            btn_approve = st.button(
+                "변경 사항 승인 및 번역 시작",
+                type="primary",
+                use_container_width=True,
+            )
+        with col2:
+            btn_reject = st.button(
+                "제안 무시하고 원본 그대로 번역",
+                use_container_width=True,
+            )
 
-    render_card_end()
+        render_card_end()
 
-    # 버튼 핸들러 — 카드 밖에서 실행 (진행 UI를 전체 폭으로 표시)
-    if btn_approve or btn_reject:
-        resume_value = "approved" if btn_approve else "rejected"
+    # 수정 제안 0건이면 자동 승인 → 바로 번역 시작
+    _auto_approve = (ko_count == 0)
+
+    # 버튼 핸들러 — 승인 결과 저장 후 translating 단계로 전환
+    if btn_approve or btn_reject or _auto_approve:
+        resume_value = "approved" if (btn_approve or _auto_approve) else "rejected"
+        st.session_state._ko_resume_value = resume_value
 
         # 시트 상태 업데이트
         if st.session_state.worksheet and st.session_state.df is not None:
             _df = st.session_state.df
             _ws = st.session_state.worksheet
-            if btn_approve:
+            if btn_approve or _auto_approve:
                 _upd = [
                     {"row_index": i, "column_name": TOOL_STATUS_COLUMN,
                      "value": Status.KO_REVIEW_DONE}
@@ -556,14 +657,66 @@ if st.session_state.current_step == "ko_review":
         st.session_state.current_step = "translating"
         st.session_state.pipeline_status.update({
             "ko_approval": "done",
-            "ko_approval_text": "승인됨" if btn_approve else "스킵",
+            "ko_approval_text": "승인됨" if (btn_approve or _auto_approve) else "스킵",
             "translator": "active",
             "translator_text": "진행중",
         })
-        config = {"configurable": {"thread_id": st.session_state.thread_id}}
+        st.session_state.step_progress = {"value": 0, "label": "AI 번역 진행중"}
+        st.rerun()
 
+# ── 번역 진행 (translating 단계) ─────────────────────────────────────
+
+if st.session_state.current_step == "translating":
+    # 로그 영역 먼저 확보 → 취소 버튼은 로그 아래에 표시
+    _streaming_area = st.container()
+
+    btn_cancel_translation = st.button(
+        "번역 취소 — 한국어 검수로 돌아가기",
+        use_container_width=True,
+    )
+
+    if btn_cancel_translation:
+        # 그래프 재생성 + 초기 phase 재실행하여 ko_approval interrupt 도달
+        graph, _ = build_graph()
+        st.session_state.graph = graph
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.logs.append("번역 취소 — 한국어 검수 단계로 복귀 중...")
+
+        _init_state = st.session_state.get("_initial_state")
+        if _init_state:
+            _cfg = {"configurable": {"thread_id": st.session_state.thread_id}}
+            try:
+                for _ev in st.session_state.graph.stream(
+                    _init_state, config=_cfg, stream_mode="updates"
+                ):
+                    if "__interrupt__" in _ev:
+                        break
+                st.session_state.pipeline_status = {
+                    "data_backup": "done",
+                    "context_glossary": "done",
+                    "ko_review": "done",
+                    "ko_approval": "active",
+                    "ko_approval_text": "승인 대기",
+                }
+                st.session_state.logs.append("한국어 검수 단계로 복귀 완료")
+                st.session_state.current_step = "ko_review"
+            except Exception as e:
+                st.session_state.logs.append(f"복귀 오류: {e} — 초기화합니다.")
+                st.session_state.current_step = "idle"
+                st.session_state.pipeline_status = {}
+        else:
+            st.session_state.current_step = "idle"
+            st.session_state.pipeline_status = {}
+
+        st.rerun()
+
+    # 스트리밍 실행 — _streaming_area 안에서 로그 렌더, 취소 버튼은 그 아래
+    config = {"configurable": {"thread_id": st.session_state.thread_id}}
+    resume_value = st.session_state.get("_ko_resume_value", "approved")
+
+    with _streaming_area:
         try:
-            result = _run_translation_streaming(resume_value, config)
+            result = _run_translation_streaming(resume_value, config, _indicator_slot)
             _process_translation_result(result)
             st.session_state.pipeline_status.update({
                 "translator": "done",
@@ -574,13 +727,12 @@ if st.session_state.current_step == "ko_review":
             st.session_state.current_step = "final_review"
         except Exception as e:
             st.session_state.logs.append(f"번역 오류: {e}")
-            # 그래프 재생성 후 ko_review로 복구 (재시도 가능)
             graph, _ = build_graph()
             st.session_state.graph = graph
             st.session_state.thread_id = str(uuid.uuid4())
             st.session_state.current_step = "idle"
 
-        st.rerun()
+    st.rerun()
 
 # ── HITL 2: 최종 번역 승인 ────────────────────────────────────────────
 
@@ -837,8 +989,13 @@ if st.session_state.current_step == "done":
 
     render_card_end()
 
-# ── 실행 로그 (접기 형태) ──────────────────────────────────────────────
+# ── 실행 로그 (하단 고정) ──────────────────────────────────────────────
 
-if st.session_state.logs and st.session_state.current_step != "done":
-    with st.expander("실행 로그", expanded=False):
-        render_log_terminal(st.session_state.logs)
+if st.session_state.logs and st.session_state.current_step not in ("idle", "done", "translating"):
+    st.markdown(
+        '<p style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); '
+        'text-transform: uppercase; letter-spacing: 1.2px; margin: 1.5rem 0 0.4rem; '
+        'font-family: \'DM Sans\', sans-serif;">실행 로그</p>',
+        unsafe_allow_html=True,
+    )
+    render_log_terminal(st.session_state.logs)
