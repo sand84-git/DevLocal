@@ -126,6 +126,7 @@ def translator_node(state: LocalizationState) -> dict:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
+                    timeout=120,
                 )
 
                 total_input_tokens += getattr(
@@ -143,10 +144,16 @@ def translator_node(state: LocalizationState) -> dict:
                 translated_items = json.loads(content)
 
                 for item in translated_items:
+                    translated_text = item.get("translated", "")
+                    # Fix: LLM이 JSON에서 \n을 실제 개행으로 출력하는 문제 보정
+                    # json.loads()가 \n → 실제 줄바꿈으로 변환하므로,
+                    # 게임 텍스트의 literal \n 태그를 복원
+                    translated_text = translated_text.replace('\n', '\\n')
+                    translated_text = translated_text.replace('\t', '\\t')
                     all_results.append({
                         "key": item["key"],
                         "lang": lang,
-                        "translated": item["translated"],
+                        "translated": translated_text,
                     })
 
             except Exception as e:

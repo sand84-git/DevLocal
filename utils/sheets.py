@@ -56,9 +56,23 @@ def get_worksheet_names(spreadsheet: gspread.Spreadsheet) -> list[str]:
 
 
 def load_sheet_data(worksheet: gspread.Worksheet) -> pd.DataFrame:
-    """1회 전체 로드 → DataFrame 변환 (헤더 이름 기반)"""
-    records = _retry_with_backoff(worksheet.get_all_records)
-    df = pd.DataFrame(records)
+    """1회 전체 로드 → DataFrame 변환 (헤더 이름 기반).
+    빈 헤더나 중복 헤더가 있어도 안전하게 처리."""
+    all_values = _retry_with_backoff(worksheet.get_all_values)
+    if not all_values:
+        return pd.DataFrame()
+
+    headers = all_values[0]
+    # 빈 헤더 컬럼 제거 (인덱스 기록)
+    valid_cols = [(i, h) for i, h in enumerate(headers) if h.strip()]
+    clean_headers = [h for _, h in valid_cols]
+    valid_indices = [i for i, _ in valid_cols]
+
+    rows = []
+    for row in all_values[1:]:
+        rows.append([row[i] if i < len(row) else "" for i in valid_indices])
+
+    df = pd.DataFrame(rows, columns=clean_headers)
     return df
 
 
@@ -123,3 +137,17 @@ def create_backup_csv(df: pd.DataFrame, sheet_name: str) -> tuple[str, bytes]:
     csv_bytes = buffer.getvalue()
 
     return filename, csv_bytes
+
+
+def save_backup_to_folder(
+    df: pd.DataFrame, sheet_name: str, folder: str = "./backups"
+) -> str:
+    """백업 CSV를 로컬 폴더에 자동 저장. 폴더가 없으면 생성."""
+    import os
+
+    os.makedirs(folder, exist_ok=True)
+    now = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+    filename = f"{sheet_name}_backup_{now}.csv"
+    filepath = os.path.join(folder, filename)
+    df.to_csv(filepath, index=False, encoding="utf-8-sig")
+    return filepath

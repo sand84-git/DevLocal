@@ -38,3 +38,6 @@ class LocalizationState(TypedDict):
 
     # 로그
     logs: list[str]
+
+    # 내부 전달용
+    _updates: list[dict]          # writer → app.py 시트 업데이트 목록

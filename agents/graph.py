@@ -1,4 +1,4 @@
-"""LangGraph 워크플로우 정의 — 5 Node + HITL 2곳 interrupt"""
+"""LangGraph 워크플로우 정의 — 6 Node + HITL 2곳 interrupt"""
 
 import json
 import litellm
@@ -17,12 +17,12 @@ from agents.nodes.writer import writer_node
 from config.constants import LLM_MODEL, REQUIRED_COLUMNS, CHUNK_SIZE
 
 
-# ── 한국어 검수 노드 (HITL 1 interrupt 포함) ──────────────────────────
+# ── 한국어 검수 노드 (AI 분석만, interrupt 없음) ─────────────────────
 
 def ko_review_node(state: LocalizationState) -> dict:
     """
-    한국어 맞춤법/띄어쓰기 검수 + HITL 1 interrupt.
-    AI가 수정 제안을 생성하고, 사용자 승인을 기다림.
+    한국어 맞춤법/띄어쓰기 검수 — AI 분석만 수행.
+    interrupt는 별도 ko_approval_node에서 처리.
     """
     original_data = state.get("original_data", [])
     logs = list(state.get("logs", []))
@@ -60,6 +60,7 @@ def ko_review_node(state: LocalizationState) -> dict:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_content},
                 ],
+                timeout=120,
             )
 
             total_input_tokens += getattr(response.usage, "prompt_tokens", 0)
@@ -79,6 +80,23 @@ def ko_review_node(state: LocalizationState) -> dict:
 
     logs.append(f"[한국어 검수] 수정 제안: {len(ko_review_results)}건")
 
+    return {
+        "ko_review_results": ko_review_results,
+        "total_input_tokens": total_input_tokens,
+        "total_output_tokens": total_output_tokens,
+        "logs": logs,
+    }
+
+
+# ── 한국어 검수 승인 노드 (HITL 1 interrupt) ────────────────────────
+
+def ko_approval_node(state: LocalizationState) -> dict:
+    """
+    한국어 검수 결과를 사용자에게 보여주고 승인 대기 (HITL 1).
+    """
+    ko_review_results = state.get("ko_review_results", [])
+    logs = list(state.get("logs", []))
+
     # HITL 1 — 사용자 승인 대기
     approval = interrupt({
         "type": "ko_review",
@@ -86,11 +104,10 @@ def ko_review_node(state: LocalizationState) -> dict:
         "count": len(ko_review_results),
     })
 
+    logs.append(f"[한국어 검수] 사용자 결정: {approval}")
+
     return {
-        "ko_review_results": ko_review_results,
         "ko_approval_result": approval,
-        "total_input_tokens": total_input_tokens,
-        "total_output_tokens": total_output_tokens,
         "logs": logs,
     }
 
@@ -151,6 +168,7 @@ def build_graph():
     workflow.add_node("data_backup", data_backup_node)
     workflow.add_node("context_glossary", context_glossary_node)
     workflow.add_node("ko_review", ko_review_node)
+    workflow.add_node("ko_approval", ko_approval_node)
     workflow.add_node("translator", translator_node)
     workflow.add_node("reviewer", reviewer_node)
     workflow.add_node("final_approval", final_approval_node)
@@ -160,8 +178,9 @@ def build_graph():
     workflow.set_entry_point("data_backup")
     workflow.add_edge("data_backup", "context_glossary")
     workflow.add_edge("context_glossary", "ko_review")
-    # ko_review → (HITL 1 interrupt 후 resume) → translator
-    workflow.add_edge("ko_review", "translator")
+    workflow.add_edge("ko_review", "ko_approval")
+    # ko_approval → (HITL 1 interrupt 후 resume) → translator
+    workflow.add_edge("ko_approval", "translator")
     workflow.add_edge("translator", "reviewer")
     # reviewer → 조건부: retry가 필요하면 translator, 아니면 final_approval
     workflow.add_conditional_edges("reviewer", should_retry)

@@ -1,4 +1,4 @@
-"""Node 4: 검수 (LLM + Regex) — 태그 검증, Glossary 후처리, AI 품질 검증"""
+"""Node 4: 검수 (LLM + Regex) — 태그 검증, Glossary 후처리, AI 품질 검증 (청크 배치)"""
 
 import json
 import litellm
@@ -7,8 +7,8 @@ import streamlit as st
 from agents.state import LocalizationState
 from agents.prompts import build_reviewer_prompt
 from config.constants import (
+    CHUNK_SIZE,
     LLM_MODEL,
-    MAX_RETRY_COUNT,
     REQUIRED_COLUMNS,
     SUPPORTED_LANGUAGES,
 )
@@ -27,18 +27,32 @@ def _format_glossary_text(lang: str) -> str:
     return "\n".join(lines)
 
 
+def _build_review_prompt_batch(items_for_review: list[dict]) -> str:
+    """여러 번역 항목을 하나의 프롬프트로 결합"""
+    parts = []
+    for item in items_for_review:
+        part = (
+            f"Key: {item['key']}\n"
+            f"Korean (원문): {item['source_ko']}\n"
+            f"Translation ({item['lang']}): {item['translated']}\n"
+            f"기존 번역: {item['old_translation']}"
+        )
+        parts.append(part)
+    return "\n\n---\n\n".join(parts)
+
+
 def reviewer_node(state: LocalizationState) -> dict:
     """
     번역 결과물 검수:
-    1. 정규식 태그 검증 (하드코딩)
-    2. Glossary 후처리 (JA 등급명 강제 치환)
-    3. AI 품질 검증 (LLM 호출)
-    4. 변경 사유 자동 생성 (LLM 호출)
-    5. 실패 시 피드백 (최대 3회, 초과 시 검수실패 마킹)
+    1. Glossary 후처리 (JA 등급명 강제 치환)
+    2. 정규식 태그 검증 (경고 기록, 통과)
+    3. Glossary 준수 여부 검증 (경고 기록, 통과)
+    4. AI 품질 검증 + 변경 사유 생성 (청크 배치 LLM 호출)
+
+    검증 이슈는 사유에 기록하되, 번역 결과는 항상 review_results에 포함.
     """
     original_data = state.get("original_data", [])
     translation_results = list(state.get("translation_results", []))
-    retry_count = dict(state.get("retry_count", {}))
     failed_rows = list(state.get("failed_rows", []))
     logs = list(state.get("logs", []))
     total_input_tokens = state.get("total_input_tokens", 0)
@@ -52,9 +66,8 @@ def reviewer_node(state: LocalizationState) -> dict:
 
     api_key = st.secrets.get("XAI_API_KEY", "")
 
-    review_results = []
-    needs_retry = []  # 재번역이 필요한 항목
-
+    # ── Step 1~3: 정규식/Glossary 검증 (LLM 불필요, 즉시 처리) ──
+    validated_items = []
     for item in translation_results:
         key = item["key"]
         lang = item["lang"]
@@ -74,123 +87,135 @@ def reviewer_node(state: LocalizationState) -> dict:
         original_row = original_map.get(key, {})
         source_ko = original_row.get(REQUIRED_COLUMNS["korean"], "")
 
-        # --- Step 1: Glossary 후처리 (JA 등급명 강제 치환) ---
+        # Glossary 후처리
         translated = apply_glossary_postprocess(translated, lang)
 
-        # --- Step 2: 정규식 태그 검증 (하드코딩) ---
+        # 정규식 태그 검증
         tag_result = validate_tags(source_ko, translated)
+        warnings = []
+        if not tag_result["valid"]:
+            warnings.extend(tag_result["errors"])
+            logs.append(f"[Node 4] 태그 경고 — {key} ({lang}): {'; '.join(tag_result['errors'])}")
 
-        # --- Step 3: Glossary 준수 여부 검증 ---
+        # Glossary 준수 여부 검증
         glossary_result = check_glossary_compliance(translated, lang, source_ko)
+        if not glossary_result["compliant"]:
+            warnings.extend(glossary_result["violations"])
+            logs.append(f"[Node 4] 글로서리 경고 — {key} ({lang}): {'; '.join(glossary_result['violations'])}")
 
-        # 하드코딩 검증 실패 처리
-        if not tag_result["valid"] or not glossary_result["compliant"]:
-            current_retry = retry_count.get(f"{key}_{lang}", 0)
-
-            if current_retry >= MAX_RETRY_COUNT:
-                all_errors = tag_result["errors"] + glossary_result["violations"]
-                failed_rows.append({
-                    "key": key,
-                    "lang": lang,
-                    "reason": "; ".join(all_errors),
-                })
-                logs.append(
-                    f"[Node 4] 검수실패 (3회 초과) — {key} ({lang}): "
-                    f"{'; '.join(all_errors)}"
-                )
-            else:
-                retry_count[f"{key}_{lang}"] = current_retry + 1
-                needs_retry.append({
-                    "key": key,
-                    "lang": lang,
-                    "feedback": tag_result["errors"] + glossary_result["violations"],
-                })
-                logs.append(
-                    f"[Node 4] 재시도 요청 ({current_retry + 1}/{MAX_RETRY_COUNT}) "
-                    f"— {key} ({lang})"
-                )
-            continue
-
-        # --- Step 4: AI 품질 검증 + 변경 사유 생성 ---
         lang_col = SUPPORTED_LANGUAGES.get(lang, "")
         old_translation = original_row.get(lang_col, "")
-        reason = ""
 
-        try:
-            glossary_text = _format_glossary_text(lang)
-            system_prompt = build_reviewer_prompt(lang, glossary_text)
-            user_prompt = (
-                f"Key: {key}\n"
-                f"Korean (원문): {source_ko}\n"
-                f"Translation ({lang}): {translated}\n"
-                f"기존 번역: {old_translation}\n\n"
-                f"위 번역을 검수하고, 기존 번역 대비 변경 사유를 한 줄로 작성하세요."
+        validated_items.append({
+            "key": key,
+            "lang": lang,
+            "translated": translated,
+            "source_ko": source_ko,
+            "old_translation": old_translation,
+            "warnings": warnings,
+        })
+
+    logs.append(f"[Node 4] 정규식/Glossary 검증 완료: {len(validated_items)}건")
+
+    # ── Step 4: AI 품질 검증 (청크 배치 LLM 호출) ──
+    lang_groups: dict[str, list[dict]] = {}
+    for item in validated_items:
+        lang_groups.setdefault(item["lang"], []).append(item)
+
+    ai_review_map: dict[tuple[str, str], dict] = {}
+
+    for lang, items in lang_groups.items():
+        glossary_text = _format_glossary_text(lang)
+        system_prompt = build_reviewer_prompt(lang, glossary_text)
+        total_chunks = (len(items) + CHUNK_SIZE - 1) // CHUNK_SIZE
+
+        for chunk_idx in range(total_chunks):
+            start = chunk_idx * CHUNK_SIZE
+            end = min(start + CHUNK_SIZE, len(items))
+            chunk = items[start:end]
+
+            user_prompt = _build_review_prompt_batch(chunk)
+            user_prompt += (
+                "\n\n위 번역들을 각각 검수하고, "
+                "기존 번역 대비 변경 사유를 포함하여 JSON 배열로 출력하세요."
             )
 
-            response = litellm.completion(
-                model=LLM_MODEL,
-                api_key=api_key,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
+            logs.append(
+                f"[Node 4] {lang.upper()} 검수 청크 {chunk_idx + 1}/{total_chunks} "
+                f"({len(chunk)}건) 처리 중..."
             )
 
-            total_input_tokens += getattr(response.usage, "prompt_tokens", 0)
-            total_output_tokens += getattr(
-                response.usage, "completion_tokens", 0
+            try:
+                response = litellm.completion(
+                    model=LLM_MODEL,
+                    api_key=api_key,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    timeout=120,
+                )
+
+                total_input_tokens += getattr(response.usage, "prompt_tokens", 0)
+                total_output_tokens += getattr(
+                    response.usage, "completion_tokens", 0
+                )
+
+                content = response.choices[0].message.content.strip()
+                if content.startswith("```"):
+                    content = content.split("\n", 1)[-1].rsplit("```", 1)[0]
+
+                review_items = json.loads(content)
+                if isinstance(review_items, list):
+                    for ri in review_items:
+                        ri_key = ri.get("key", "")
+                        ai_review_map[(ri_key, lang)] = ri
+
+            except Exception as e:
+                logs.append(
+                    f"[Node 4] AI 검수 오류 (청크 {chunk_idx + 1}): {e}"
+                )
+
+    # ── 최종 review_results 조합 ──
+    review_results = []
+    for item in validated_items:
+        key = item["key"]
+        lang = item["lang"]
+        warnings = list(item["warnings"])
+
+        ai_result = ai_review_map.get((key, lang), {})
+        reason = ai_result.get("reason", "")
+
+        if ai_result.get("status") == "fail":
+            ai_issues = ai_result.get("issues", [])
+            warnings.extend(ai_issues)
+            logs.append(
+                f"[Node 4] AI 검수 경고 — {key} ({lang}): {'; '.join(ai_issues)}"
             )
 
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```"):
-                content = content.split("\n", 1)[-1].rsplit("```", 1)[0]
-
-            review_items = json.loads(content)
-            if review_items and isinstance(review_items, list):
-                review_item = review_items[0]
-                if review_item.get("status") == "fail":
-                    current_retry = retry_count.get(f"{key}_{lang}", 0)
-                    if current_retry >= MAX_RETRY_COUNT:
-                        failed_rows.append({
-                            "key": key,
-                            "lang": lang,
-                            "reason": "; ".join(review_item.get("issues", [])),
-                        })
-                    else:
-                        retry_count[f"{key}_{lang}"] = current_retry + 1
-                        needs_retry.append({
-                            "key": key,
-                            "lang": lang,
-                            "feedback": review_item.get("issues", []),
-                        })
-                    continue
-
-                reason = review_item.get("reason", "")
-
-        except Exception as e:
-            logs.append(f"[Node 4] AI 검수 오류 — {key} ({lang}): {e}")
-            reason = "AI 검수 스킵 (오류)"
+        if warnings and not reason:
+            reason = "; ".join(warnings)
+        elif warnings and reason:
+            reason = f"{reason} | 경고: {'; '.join(warnings)}"
 
         review_results.append({
             "key": key,
             "lang": lang,
-            "translated": translated,
-            "old_translation": old_translation,
+            "translated": item["translated"],
+            "old_translation": item["old_translation"],
             "reason": reason,
         })
 
-    # 재시도가 필요한 항목이 있으면 translation_results를 갱신하여
-    # 그래프 조건부 순환으로 Node 3 재호출
-    if needs_retry:
-        logs.append(f"[Node 4] 재번역 필요: {len(needs_retry)}건 → Node 3 피드백")
+    logs.append(
+        f"[Node 4] 검수 완료: {len(review_results)}건 통과, "
+        f"{len(failed_rows)}건 실패"
+    )
 
     return {
         "review_results": review_results,
         "failed_rows": failed_rows,
-        "retry_count": retry_count,
+        "retry_count": {},
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
         "logs": logs,
-        # 그래프 조건 분기용 — needs_retry가 있으면 translator로 재순환
-        "_needs_retry": needs_retry,
     }
