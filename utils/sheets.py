@@ -123,6 +123,70 @@ def batch_update_sheet(
         _retry_with_backoff(worksheet.update_cells, cells)
 
 
+# 셀 하이라이트 색상 정의
+HIGHLIGHT_COLORS = {
+    "translation": {"red": 1.0, "green": 0.976, "blue": 0.769},      # 연한 노랑
+    "review_failed": {"red": 1.0, "green": 0.922, "blue": 0.933},    # 연한 빨강
+    "completed": {"red": 0.89, "green": 0.949, "blue": 0.992},       # 연한 파랑
+}
+
+
+def batch_format_cells(
+    worksheet: gspread.Worksheet,
+    updates: list[dict],
+    df: pd.DataFrame,
+):
+    """
+    변경된 셀에 배경색 일괄 적용 (Google Sheets API batch_update).
+
+    updates 내 change_type 필드에 따라 색상 적용:
+    - "translation": 연한 노랑 (#FFF9C4)
+    - "review_failed": 연한 빨강 (#FFEBEE)
+    - "completed": 연한 파랑 (#E3F2FD)
+    """
+    headers = list(df.columns)
+    requests = []
+
+    for upd in updates:
+        change_type = upd.get("change_type", "")
+        if not change_type or change_type not in HIGHLIGHT_COLORS:
+            continue
+
+        row_idx = upd["row_index"]
+        col_name = upd["column_name"]
+
+        if col_name not in headers:
+            continue
+
+        col_idx = headers.index(col_name)
+        sheet_row = row_idx + 1  # 0-based for API (header = row 0)
+
+        color = HIGHLIGHT_COLORS[change_type]
+        requests.append({
+            "repeatCell": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "startRowIndex": sheet_row,
+                    "endRowIndex": sheet_row + 1,
+                    "startColumnIndex": col_idx,
+                    "endColumnIndex": col_idx + 1,
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": color,
+                    }
+                },
+                "fields": "userEnteredFormat.backgroundColor",
+            }
+        })
+
+    if requests:
+        _retry_with_backoff(
+            worksheet.spreadsheet.batch_update,
+            {"requests": requests},
+        )
+
+
 def create_backup_csv(df: pd.DataFrame, sheet_name: str) -> tuple[str, bytes]:
     """
     백업 CSV 생성 — 파일명과 바이트 데이터 반환.

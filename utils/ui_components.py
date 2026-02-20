@@ -1,53 +1,55 @@
-"""UI 컴포넌트 헬퍼 — 모던 SaaS 디자인 시스템 (Indigo + Dark Sidebar)"""
+"""UI 컴포넌트 헬퍼 — Fixoria 디자인 시스템 (Warm Neutral + Green Accent)"""
 
 import html as html_module
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 def inject_custom_css():
-    """전체 커스텀 CSS 주입 — 모던 SaaS 스타일"""
+    """전체 커스텀 CSS 주입 — Fixoria 워밍 뉴트럴 스타일"""
     st.markdown(
         """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
 
     /* ══════════════════════════════════════════
-       Design Tokens
+       Design Tokens — Fixoria Warm Neutral
        ══════════════════════════════════════════ */
     :root {
-        --bg-main: #F8FAFC;
+        --bg-main: #F4F2EE;
         --bg-card: #FFFFFF;
-        --bg-sidebar: #0F172A;
-        --bg-sidebar-hover: rgba(255,255,255,0.05);
-        --bg-sidebar-active: rgba(99,102,241,0.12);
+        --bg-sidebar: #FAFAF8;
+        --bg-sidebar-hover: #F0EDE7;
+        --bg-sidebar-active: #F0EDE7;
 
-        --accent: #6366F1;
-        --accent-hover: #4F46E5;
-        --accent-light: #EEF2FF;
-        --accent-glow: rgba(99,102,241,0.25);
+        --accent: #4A7C59;
+        --accent-hover: #3D6B4C;
+        --accent-light: #E4F0E4;
+        --accent-glow: rgba(74,124,89,0.18);
 
-        --success: #10B981;
-        --success-light: #ECFDF5;
-        --warning: #F59E0B;
-        --warning-light: #FFFBEB;
-        --error: #EF4444;
-        --error-light: #FEF2F2;
+        --success: #4A7C59;
+        --success-light: #E4F0E4;
+        --warning: #C4A67D;
+        --warning-light: #FFF6E9;
+        --error: #C75050;
+        --error-light: #FFEBEE;
 
-        --text-primary: #0F172A;
-        --text-secondary: #475569;
-        --text-muted: #94A3B8;
-        --text-sidebar: #CBD5E1;
-        --text-sidebar-muted: #64748B;
+        --text-primary: #1A1A1A;
+        --text-secondary: #5A5A5A;
+        --text-muted: #A0A0A0;
+        --text-sidebar: #1A1A1A;
+        --text-sidebar-muted: #8A8A8A;
 
-        --border: #E2E8F0;
-        --border-light: #F1F5F9;
+        --border: #EEEDEA;
+        --border-light: #F5F4F1;
+        --border-strong: #DEDBD5;
 
-        --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.04);
+        --shadow-sm: none;
+        --shadow-md: none;
 
         --radius-sm: 6px;
-        --radius-md: 10px;
-        --radius-lg: 14px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
         --radius-xl: 20px;
     }
 
@@ -56,19 +58,21 @@ def inject_custom_css():
        ══════════════════════════════════════════ */
     .stApp {
         background-color: var(--bg-main);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     h1, h2, h3 {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: var(--text-primary) !important;
+        font-weight: 700;
+        letter-spacing: -0.5px;
     }
 
     /* ══════════════════════════════════════════
-       Dark Sidebar
+       Light Sidebar
        ══════════════════════════════════════════ */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
-        border-right: 1px solid rgba(255,255,255,0.04);
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border);
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0.8rem;
@@ -84,10 +88,10 @@ def inject_custom_css():
     }
     [data-testid="stSidebar"] .sidebar-section-title {
         font-size: 0.68rem;
-        font-weight: 600;
+        font-weight: 500;
         color: var(--text-sidebar-muted) !important;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 1.2px;
         margin-bottom: 0.5rem;
         padding-bottom: 0;
         border-bottom: none;
@@ -95,18 +99,19 @@ def inject_custom_css():
 
     /* Sidebar text input */
     [data-testid="stSidebar"] .stTextInput input {
-        background-color: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.1);
+        background-color: #FFFFFF;
+        border: 1px solid var(--border);
         border-radius: var(--radius-md);
-        color: #E2E8F0 !important;
+        color: var(--text-primary) !important;
         font-size: 0.85rem;
+        font-family: 'DM Sans', sans-serif;
     }
     [data-testid="stSidebar"] .stTextInput input:focus {
         border-color: var(--accent);
         box-shadow: 0 0 0 3px var(--accent-glow);
     }
     [data-testid="stSidebar"] .stTextInput input::placeholder {
-        color: var(--text-sidebar-muted) !important;
+        color: var(--text-muted) !important;
     }
 
     /* Sidebar selectbox */
@@ -114,23 +119,29 @@ def inject_custom_css():
         border-radius: var(--radius-md);
     }
     [data-testid="stSidebar"] [data-baseweb="select"] > div {
-        background-color: rgba(255,255,255,0.06);
-        border-color: rgba(255,255,255,0.1);
-        color: #E2E8F0 !important;
+        background-color: #FFFFFF;
+        border-color: var(--border);
+        color: var(--text-primary) !important;
     }
     [data-testid="stSidebar"] [data-baseweb="select"] > div:hover {
-        border-color: rgba(255,255,255,0.2);
+        border-color: var(--border-strong);
     }
 
     /* Sidebar multiselect */
     [data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div {
-        background-color: rgba(255,255,255,0.06);
-        border-color: rgba(255,255,255,0.1);
+        background-color: #FFFFFF;
+        border-color: var(--border);
     }
     [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {
         background-color: var(--accent) !important;
         color: white !important;
         border-radius: var(--radius-sm) !important;
+    }
+    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] span,
+    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] div,
+    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {
+        color: white !important;
+        font-weight: 600 !important;
     }
 
     /* Sidebar radio */
@@ -140,95 +151,133 @@ def inject_custom_css():
 
     /* Sidebar number input */
     [data-testid="stSidebar"] .stNumberInput input {
-        background-color: rgba(255,255,255,0.06);
-        border-color: rgba(255,255,255,0.1);
-        color: #E2E8F0 !important;
+        background-color: #FFFFFF;
+        border-color: var(--border);
+        color: var(--text-primary) !important;
         border-radius: var(--radius-md);
+        font-family: 'DM Sans', sans-serif;
     }
 
     /* Sidebar divider */
     [data-testid="stSidebar"] hr {
-        border-color: rgba(255,255,255,0.06);
+        border-color: var(--border);
         margin: 0.8rem 0;
     }
 
-    /* Sidebar buttons */
+    /* Sidebar buttons — primary */
+    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"],
     [data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-        border: none;
+        background: var(--accent) !important;
+        border: none !important;
         color: white !important;
         width: 100%;
+        font-weight: 700 !important;
+        font-size: 0.9rem !important;
+        font-family: 'DM Sans', sans-serif !important;
+        padding: 0.6rem 1rem !important;
+        letter-spacing: 0.3px;
     }
+    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] p,
+    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] span,
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] p,
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] span {
+        color: white !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"]:hover,
+    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+        background: var(--accent-hover) !important;
+    }
+    /* Sidebar buttons — secondary */
+    [data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"],
     [data-testid="stSidebar"] .stButton > button:not([kind="primary"]) {
-        background: rgba(255,255,255,0.04);
-        border-color: rgba(255,255,255,0.1);
-        color: var(--text-sidebar) !important;
-        font-size: 0.8rem;
+        background: #FFFFFF !important;
+        border-color: var(--border) !important;
+        color: var(--text-secondary) !important;
+        font-size: 0.8rem !important;
     }
+    [data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"]:hover,
     [data-testid="stSidebar"] .stButton > button:not([kind="primary"]):hover {
-        background: rgba(99,102,241,0.12);
-        border-color: var(--accent);
-        color: #A5B4FC !important;
+        background: var(--bg-sidebar-hover) !important;
+        border-color: var(--border-strong) !important;
+        color: var(--text-primary) !important;
     }
 
     /* Sidebar expander */
     [data-testid="stSidebar"] .streamlit-expanderHeader {
-        color: var(--text-sidebar) !important;
+        color: var(--text-secondary) !important;
         font-size: 0.8rem;
     }
 
     /* ══════════════════════════════════════════
-       Buttons — Main Area
+       Buttons — Main Area (Primary)
        ══════════════════════════════════════════ */
+    button[data-testid="stBaseButton-primary"],
     .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-        border: none;
-        border-radius: var(--radius-md);
+        background: var(--accent) !important;
+        border: none !important;
+        border-radius: var(--radius-md) !important;
         color: white !important;
-        font-weight: 600;
-        font-size: 0.875rem;
-        padding: 0.55rem 1.4rem;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
+        font-family: 'DM Sans', sans-serif !important;
+        padding: 0.6rem 1.4rem !important;
+        letter-spacing: 0.3px;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 1px 3px rgba(99,102,241,0.3);
     }
+    button[data-testid="stBaseButton-primary"] p,
+    button[data-testid="stBaseButton-primary"] span,
+    .stButton > button[kind="primary"] p,
+    .stButton > button[kind="primary"] span {
+        color: white !important;
+        font-weight: 700 !important;
+    }
+    button[data-testid="stBaseButton-primary"]:hover,
     .stButton > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, var(--accent-hover) 0%, #4338CA 100%);
-        box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+        background: var(--accent-hover) !important;
         transform: translateY(-1px);
     }
+    button[data-testid="stBaseButton-primary"]:active,
     .stButton > button[kind="primary"]:active {
         transform: translateY(0);
     }
+
+    /* Buttons — Main Area (Secondary) */
+    button[data-testid="stBaseButton-secondary"],
     .stButton > button:not([kind="primary"]) {
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border);
-        color: var(--text-secondary) !important;
-        font-weight: 500;
-        font-size: 0.875rem;
-        padding: 0.55rem 1.4rem;
+        border-radius: var(--radius-md) !important;
+        border: 1px solid var(--border-strong) !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        font-family: 'DM Sans', sans-serif !important;
+        padding: 0.6rem 1.4rem !important;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        background: var(--bg-card);
+        background: var(--bg-card) !important;
     }
+    button[data-testid="stBaseButton-secondary"]:hover,
     .stButton > button:not([kind="primary"]):hover {
-        border-color: var(--accent);
+        border-color: var(--accent) !important;
         color: var(--accent) !important;
-        background: var(--accent-light);
+        background: var(--accent-light) !important;
     }
 
     /* Download button */
-    .stDownloadButton > button {
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border);
-        color: var(--text-secondary) !important;
-        font-weight: 500;
-        font-size: 0.82rem;
+    .stDownloadButton > button,
+    button[data-testid="stBaseButton-secondary"].st-emotion-cache-download {
+        border-radius: var(--radius-md) !important;
+        border: 1px solid var(--border-strong) !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        font-family: 'DM Sans', sans-serif !important;
         transition: all 0.2s ease;
-        background: var(--bg-card);
+        background: var(--bg-card) !important;
     }
     .stDownloadButton > button:hover {
-        border-color: var(--accent);
+        border-color: var(--accent) !important;
         color: var(--accent) !important;
-        background: var(--accent-light);
+        background: var(--accent-light) !important;
     }
 
     /* ══════════════════════════════════════════
@@ -240,24 +289,23 @@ def inject_custom_css():
         border: 1px solid var(--border);
         padding: 0;
         margin: 1rem 0;
-        box-shadow: var(--shadow-sm);
         overflow: hidden;
-        animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .dl-card-header {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 0.85rem 1.3rem;
-        border-bottom: 1px solid var(--border-light);
-        background: linear-gradient(135deg, #FAFBFF 0%, #F8FAFC 100%);
+        padding: 1rem 1.3rem;
+        border-bottom: 1px solid var(--border);
     }
     .dl-card-header .icon { font-size: 1.05rem; }
     .dl-card-header .title {
         font-size: 0.92rem;
         font-weight: 700;
         color: var(--text-primary);
-        letter-spacing: -0.01em;
+        letter-spacing: -0.3px;
+        font-family: 'DM Sans', sans-serif;
     }
     .dl-card-header .badge {
         margin-left: auto;
@@ -266,9 +314,9 @@ def inject_custom_css():
         padding: 2px 10px;
         border-radius: var(--radius-xl);
         font-size: 0.72rem;
-        font-weight: 600;
+        font-weight: 700;
     }
-    .dl-card-body { padding: 1.2rem 1.3rem; }
+    .dl-card-body { padding: 18px 20px; }
 
     /* ══════════════════════════════════════════
        Step Indicator
@@ -281,9 +329,9 @@ def inject_custom_css():
         background: var(--bg-card);
         border-radius: var(--radius-lg);
         border: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
         margin-bottom: 1.2rem;
         gap: 0;
+        animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .step-item { display: flex; align-items: center; gap: 7px; }
     .step-circle {
@@ -291,15 +339,19 @@ def inject_custom_css():
         display: flex; align-items: center; justify-content: center;
         font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
         transition: all 0.3s ease;
+        font-family: 'DM Sans', sans-serif;
     }
     .step-circle.done { background-color: var(--success-light); color: var(--success); }
     .step-circle.active {
-        background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+        background: var(--accent);
         color: white;
-        animation: pulse-indigo 2s ease-in-out infinite;
+        animation: pulse-green 2s ease-in-out infinite;
     }
     .step-circle.pending { background-color: var(--border-light); color: var(--text-muted); }
-    .step-label { font-size: 0.78rem; font-weight: 600; letter-spacing: -0.01em; }
+    .step-label {
+        font-size: 0.78rem; font-weight: 700;
+        letter-spacing: -0.2px; font-family: 'DM Sans', sans-serif;
+    }
     .step-label.done { color: var(--success); }
     .step-label.active { color: var(--accent); }
     .step-label.pending { color: var(--text-muted); }
@@ -314,13 +366,17 @@ def inject_custom_css():
     /* ══════════════════════════════════════════
        Animations
        ══════════════════════════════════════════ */
-    @keyframes pulse-indigo {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
-        50% { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
+    @keyframes pulse-green {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(74,124,89,0.35); }
+        50% { box-shadow: 0 0 0 8px rgba(74,124,89,0); }
     }
     @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(14px); }
         to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideInLeft {
+        from { opacity: 0; transform: translateX(-12px); }
+        to   { opacity: 1; transform: translateX(0); }
     }
 
     /* ══════════════════════════════════════════
@@ -348,22 +404,25 @@ def inject_custom_css():
     .connection-badge {
         display: inline-flex; align-items: center; gap: 5px;
         padding: 3px 10px; border-radius: var(--radius-xl);
-        font-size: 0.72rem; font-weight: 600; margin-top: 4px;
+        font-size: 0.72rem; font-weight: 700; margin-top: 4px;
+        font-family: 'DM Sans', sans-serif;
     }
-    .connection-badge.success { background: rgba(16,185,129,0.12); color: #34D399; }
-    .connection-badge.error { background: rgba(239,68,68,0.12); color: #F87171; }
+    .connection-badge.success { background: var(--accent-light); color: var(--accent); }
+    .connection-badge.error { background: var(--error-light); color: var(--error); }
 
     /* ══════════════════════════════════════════
        App Header
        ══════════════════════════════════════════ */
     .app-header { text-align: center; padding: 0.2rem 0 1rem; }
     .app-header h1 {
-        font-size: 1.3rem !important; font-weight: 800;
+        font-size: 1.3rem !important; font-weight: 700;
         color: var(--text-primary) !important;
-        margin-bottom: 0.1rem; letter-spacing: -0.025em;
+        margin-bottom: 0.1rem; letter-spacing: -0.5px;
+        font-family: 'DM Sans', sans-serif !important;
     }
     .app-header .subtitle {
-        font-size: 0.78rem; color: var(--text-muted) !important; font-weight: 400;
+        font-size: 0.78rem; color: var(--text-muted) !important;
+        font-weight: 400; font-family: 'DM Sans', sans-serif;
     }
 
     /* ══════════════════════════════════════════
@@ -371,16 +430,17 @@ def inject_custom_css():
        ══════════════════════════════════════════ */
     .sidebar-logo {
         text-align: center; padding: 0.2rem 0 0.8rem;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid var(--border);
         margin-bottom: 0.8rem;
     }
     .sidebar-logo .name {
-        font-size: 1.15rem; font-weight: 800;
-        color: #FFFFFF !important; letter-spacing: -0.02em;
+        font-size: 1.15rem; font-weight: 700;
+        color: var(--text-primary) !important; letter-spacing: -0.3px;
+        font-family: 'DM Sans', sans-serif;
     }
-    .sidebar-logo .dot { color: #818CF8 !important; }
+    .sidebar-logo .dot { color: var(--accent) !important; }
     .sidebar-logo .version {
-        font-size: 0.65rem; color: var(--text-sidebar-muted) !important; font-weight: 500;
+        font-size: 0.65rem; color: var(--text-muted) !important; font-weight: 500;
     }
 
     /* ══════════════════════════════════════════
@@ -388,17 +448,17 @@ def inject_custom_css():
        ══════════════════════════════════════════ */
     .saved-url {
         display: flex; align-items: center; gap: 8px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.07);
+        background: #FFFFFF;
+        border: 1px solid var(--border);
         border-radius: var(--radius-md);
         padding: 7px 11px; margin-bottom: 0.4rem;
     }
     .saved-url .url-dot {
         width: 6px; height: 6px; border-radius: 50%;
-        background: #34D399; flex-shrink: 0;
+        background: var(--accent); flex-shrink: 0;
     }
     .saved-url .url-text {
-        font-size: 0.78rem; color: var(--text-sidebar) !important;
+        font-size: 0.78rem; color: var(--text-secondary) !important;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
     }
 
@@ -406,19 +466,33 @@ def inject_custom_css():
        Log Terminal
        ══════════════════════════════════════════ */
     .log-terminal {
-        background: #0C1222;
-        border: 1px solid rgba(255,255,255,0.05);
+        background: #FAFAF8;
+        border: 1px solid var(--border);
         border-radius: var(--radius-md);
         padding: 0.8rem 1rem;
         font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
         font-size: 0.72rem; line-height: 1.7;
-        max-height: 200px; overflow-y: auto; color: #94A3B8;
+        max-height: 200px; overflow-y: auto; color: var(--text-secondary);
     }
-    .log-terminal .log-line { padding: 0; }
-    .log-terminal .log-success { color: #34D399; }
-    .log-terminal .log-warn { color: #FBBF24; }
-    .log-terminal .log-error { color: #F87171; }
-    .log-terminal .log-info { color: #818CF8; }
+    .log-terminal .log-line { padding: 1px 0; }
+    .log-terminal .log-success { color: var(--success); }
+    .log-terminal .log-warn { color: var(--warning); }
+    .log-terminal .log-error { color: var(--error); }
+    .log-terminal .log-info { color: var(--accent); }
+    .log-terminal .log-divider {
+        border-top: 1px solid var(--border);
+        margin: 6px 0 4px;
+        padding-top: 4px;
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 0.74rem;
+    }
+    .log-terminal .log-icon {
+        display: inline-block;
+        width: 16px;
+        text-align: center;
+        margin-right: 4px;
+    }
 
     /* ══════════════════════════════════════════
        Metric Grid
@@ -429,16 +503,18 @@ def inject_custom_css():
         gap: 10px; margin: 0.8rem 0;
     }
     .metric-item {
-        background: var(--bg-main); border: 1px solid var(--border-light);
-        border-radius: var(--radius-md); padding: 0.8rem; text-align: center;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); padding: 1rem; text-align: center;
     }
     .metric-item .metric-value {
-        font-size: 1.3rem; font-weight: 700;
-        color: var(--text-primary); letter-spacing: -0.02em;
+        font-size: 1.6rem; font-weight: 700;
+        color: var(--text-primary); letter-spacing: -0.5px;
+        font-family: 'DM Sans', sans-serif;
     }
     .metric-item .metric-label {
-        font-size: 0.68rem; font-weight: 500; color: var(--text-muted);
-        text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px;
+        font-size: 0.65rem; font-weight: 500; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 1.2px; margin-top: 4px;
+        font-family: 'DM Sans', sans-serif;
     }
     .metric-item.accent .metric-value { color: var(--accent); }
     .metric-item.success .metric-value { color: var(--success); }
@@ -449,19 +525,115 @@ def inject_custom_css():
        Misc Overrides
        ══════════════════════════════════════════ */
     .stProgress > div > div {
-        background: linear-gradient(90deg, var(--accent), #818CF8);
+        background: var(--accent);
         border-radius: 4px;
     }
-    hr { border: none; border-top: 1px solid var(--border-light); margin: 1rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
     .stDataFrame {
         border-radius: var(--radius-md); overflow: hidden;
         border: 1px solid var(--border);
+        animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+    }
+
+    /* Streamlit alert/expander 등장 애니메이션 */
+    .stAlert, .stExpander, .stSuccess, .stInfo, .stWarning {
+        animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
     .stSpinner > div > div { border-top-color: var(--accent) !important; }
     .streamlit-expanderHeader {
-        font-size: 0.82rem; font-weight: 600;
+        font-size: 0.82rem; font-weight: 700;
         color: var(--text-secondary) !important;
+        font-family: 'DM Sans', sans-serif;
     }
+
+    /* Disabled state for locked sections */
+    .dl-disabled {
+        opacity: 0.4;
+        pointer-events: none;
+    }
+
+    /* ══════════════════════════════════════════
+       Pipeline Visualization
+       ══════════════════════════════════════════ */
+    .pipeline {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1.2rem 1.5rem;
+        margin: 1rem 0;
+        animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .pipeline-node {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 0;
+        animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .pipeline-node:nth-child(1)  { animation-delay: 0s; }
+    .pipeline-node:nth-child(3)  { animation-delay: 0.05s; }
+    .pipeline-node:nth-child(5)  { animation-delay: 0.1s; }
+    .pipeline-node:nth-child(7)  { animation-delay: 0.15s; }
+    .pipeline-node:nth-child(9)  { animation-delay: 0.2s; }
+    .pipeline-node:nth-child(11) { animation-delay: 0.25s; }
+    .pipeline-node:nth-child(13) { animation-delay: 0.3s; }
+    .pipeline-node:nth-child(15) { animation-delay: 0.35s; }
+    .pipeline-dot {
+        width: 22px; height: 22px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.65rem; font-weight: 700;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    .pipeline-dot.pending {
+        background: transparent;
+        border: 2px solid var(--border-strong);
+        color: var(--text-muted);
+    }
+    .pipeline-dot.active {
+        background: var(--accent);
+        border: 2px solid var(--accent);
+        color: white;
+        animation: pulse-green 2s ease-in-out infinite;
+    }
+    .pipeline-dot.done {
+        background: var(--accent);
+        border: 2px solid var(--accent);
+        color: white;
+    }
+    .pipeline-dot.error {
+        background: var(--error);
+        border: 2px solid var(--error);
+        color: white;
+    }
+    .pipeline-label {
+        font-size: 0.82rem;
+        font-weight: 500;
+        font-family: 'DM Sans', sans-serif;
+        flex: 1;
+    }
+    .pipeline-label.pending { color: var(--text-muted); }
+    .pipeline-label.active { color: var(--text-primary); font-weight: 700; }
+    .pipeline-label.done { color: var(--text-secondary); }
+    .pipeline-label.error { color: var(--error); }
+    .pipeline-status {
+        font-size: 0.72rem;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .pipeline-status.pending { color: var(--text-muted); }
+    .pipeline-status.active { color: var(--accent); }
+    .pipeline-status.done { color: var(--success); }
+    .pipeline-status.error { color: var(--error); }
+    .pipeline-connector {
+        width: 2px; height: 10px;
+        margin-left: 10px;
+        flex-shrink: 0;
+    }
+    .pipeline-connector.done { background: var(--accent); }
+    .pipeline-connector.active { background: linear-gradient(180deg, var(--accent), var(--border-strong)); }
+    .pipeline-connector.pending { background: var(--border); }
 </style>
 """,
         unsafe_allow_html=True,
@@ -481,7 +653,7 @@ def render_step_indicator(current_step: str):
     step_map = {
         "idle": ["pending", "pending", "pending"],
         "loading": ["active", "pending", "pending"],
-        "ko_review": ["done", "pending", "pending"],
+        "ko_review": ["active", "pending", "pending"],
         "translating": ["done", "active", "pending"],
         "final_review": ["done", "done", "active"],
         "done": ["done", "done", "done"],
@@ -586,7 +758,7 @@ def render_done_header():
 
 
 def render_saved_url(url: str):
-    """고정된 시트 URL 표시 (다크 사이드바용)"""
+    """고정된 시트 URL 표시 (라이트 사이드바용)"""
     display = url
     if len(url) > 50:
         display = url[:18] + "..." + url[-24:]
@@ -602,25 +774,48 @@ def render_saved_url(url: str):
 
 
 def render_log_terminal(logs: list):
-    """터미널 스타일 실행 로그"""
+    """터미널 스타일 실행 로그 — 아이콘 + 노드별 구분"""
     if not logs:
         return
     lines = []
     for log in logs:
-        escaped = html_module.escape(str(log))
+        log_str = str(log)
+        escaped = html_module.escape(log_str)
+
+        # 노드 구분선 감지: [Node X] 패턴
+        if "[Node " in log_str and "]" in log_str:
+            lines.append(f'<div class="log-line log-divider">{escaped}</div>')
+            continue
+
+        # 레벨 감지 + 아이콘
         css_class = "log-line"
-        if any(kw in log for kw in ["완료", "성공"]):
+        icon = ""
+        if any(kw in log_str for kw in ["완료", "성공"]):
             css_class += " log-success"
-        elif any(kw in log for kw in ["경고", "Warning"]):
+            icon = '<span class="log-icon">✓</span>'
+        elif any(kw in log_str for kw in ["경고", "Warning"]):
             css_class += " log-warn"
-        elif any(kw in log for kw in ["오류", "실패", "Error"]):
+            icon = '<span class="log-icon">⚠</span>'
+        elif any(kw in log_str for kw in ["오류", "실패", "Error"]):
             css_class += " log-error"
-        elif any(kw in log for kw in ["디버그", "Node"]):
+            icon = '<span class="log-icon">✕</span>'
+        elif any(kw in log_str for kw in ["디버그"]):
             css_class += " log-info"
-        lines.append(f'<div class="{css_class}">{escaped}</div>')
+            icon = '<span class="log-icon">ℹ</span>'
+
+        lines.append(f'<div class="{css_class}">{icon}{escaped}</div>')
     st.markdown(
         f'<div class="log-terminal">{"".join(lines)}</div>',
         unsafe_allow_html=True,
+    )
+    # 자동 스크롤: 새 로그 추가 시 터미널 하단으로 이동
+    components.html(
+        """<script>
+        const terminals = window.parent.document.querySelectorAll('.log-terminal');
+        terminals.forEach(el => { el.scrollTop = el.scrollHeight; });
+        </script>""",
+        height=0,
+        scrolling=False,
     )
 
 
@@ -640,5 +835,72 @@ def render_metric_grid(metrics: list):
         )
     st.markdown(
         f'<div class="metric-grid">{"".join(items)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ── Pipeline 노드 정의 ──────────────────────────────────────────────
+
+PIPELINE_NODES = [
+    {"key": "data_backup", "label": "데이터 확인"},
+    {"key": "context_glossary", "label": "컨텍스트 로드"},
+    {"key": "ko_review", "label": "한국어 검수"},
+    {"key": "ko_approval", "label": "한국어 승인"},
+    {"key": "translator", "label": "AI 번역"},
+    {"key": "reviewer", "label": "품질 검수"},
+    {"key": "final_approval", "label": "최종 승인"},
+    {"key": "writer", "label": "시트 업데이트"},
+]
+
+_STATUS_ICONS = {
+    "pending": "○",
+    "active": "◉",
+    "done": "✓",
+    "error": "✕",
+}
+
+_STATUS_TEXTS = {
+    "pending": "대기",
+    "active": "진행중",
+    "done": "완료",
+    "error": "오류",
+}
+
+
+def render_pipeline(pipeline_status: dict):
+    """8노드 버티컬 파이프라인 시각화.
+
+    pipeline_status: {"data_backup": "done", "translator": "active", ...}
+    키가 없으면 "pending"으로 처리.
+    """
+    parts = []
+    for i, node in enumerate(PIPELINE_NODES):
+        state = pipeline_status.get(node["key"], "pending")
+        icon = _STATUS_ICONS.get(state, "○")
+        status_text = pipeline_status.get(f"{node['key']}_text", _STATUS_TEXTS.get(state, ""))
+
+        # 커넥터 (첫 노드 제외)
+        if i > 0:
+            prev_state = pipeline_status.get(PIPELINE_NODES[i - 1]["key"], "pending")
+            if prev_state in ("done",) and state in ("done", "active"):
+                conn_cls = "done"
+            elif prev_state in ("done",) and state == "pending":
+                conn_cls = "active"
+            else:
+                conn_cls = "pending"
+            parts.append(
+                f'<div class="pipeline-connector {conn_cls}"></div>'
+            )
+
+        parts.append(
+            f'<div class="pipeline-node">'
+            f'  <div class="pipeline-dot {state}">{icon}</div>'
+            f'  <span class="pipeline-label {state}">{node["label"]}</span>'
+            f'  <span class="pipeline-status {state}">{html_module.escape(status_text)}</span>'
+            f'</div>'
+        )
+
+    st.markdown(
+        f'<div class="pipeline">{"".join(parts)}</div>',
         unsafe_allow_html=True,
     )

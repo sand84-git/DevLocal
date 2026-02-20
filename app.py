@@ -14,6 +14,7 @@ from config.constants import (
     TOOL_STATUS_COLUMN,
 )
 from utils.sheets import (
+    batch_format_cells,
     batch_update_sheet,
     connect_to_sheet,
     create_backup_csv,
@@ -25,10 +26,13 @@ from utils.sheets import (
 from utils.diff_report import (
     generate_ko_diff_report,
     generate_translation_diff_report,
+    style_ko_diff,
+    style_translation_diff,
 )
 from utils.ui_components import (
     inject_custom_css,
     render_step_indicator,
+    render_pipeline,
     render_card_start,
     render_card_end,
     render_sidebar_logo,
@@ -75,6 +79,8 @@ _defaults = {
     "url_editing": False,
     # 백업 폴더
     "backup_folder": "./backups",
+    # 파이프라인 상태
+    "pipeline_status": {},
 }
 for key, default in _defaults.items():
     if key not in st.session_state:
@@ -87,12 +93,6 @@ if "graph" not in st.session_state:
 
 # ── 헬퍼: 번역 phase 스트리밍 실행 ───────────────────────────────────
 
-_NODE_LABELS = {
-    "ko_approval": "한국어 검수 승인",
-    "translator": "AI 번역",
-    "reviewer": "품질 검수",
-    "final_approval": "결과 준비",
-}
 _PROGRESS_NODES = ["translator", "reviewer", "final_approval"]
 
 
@@ -103,12 +103,7 @@ def _run_translation_streaming(resume_value: str, config: dict):
     """
     app_logs = list(st.session_state.logs)
     graph_logs = []
-
-    progress_bar = st.progress(0, text="번역 준비 중...")
     log_container = st.empty()
-
-    completed = 0
-    total = len(_PROGRESS_NODES)
 
     try:
         for event in st.session_state.graph.stream(
@@ -125,21 +120,21 @@ def _run_translation_streaming(resume_value: str, config: dict):
             if node_logs:
                 graph_logs = node_logs
 
-            # 프로그레스 업데이트
-            label = _NODE_LABELS.get(node_name, node_name)
+            # 파이프라인 상태 업데이트
             if node_name in _PROGRESS_NODES:
-                completed += 1
-                pct = min(completed / total, 1.0)
-                progress_bar.progress(pct, text=f"{label} 완료")
+                st.session_state.pipeline_status[node_name] = "done"
+                st.session_state.pipeline_status[f"{node_name}_text"] = "완료"
+                idx = _PROGRESS_NODES.index(node_name)
+                if idx + 1 < len(_PROGRESS_NODES):
+                    next_node = _PROGRESS_NODES[idx + 1]
+                    st.session_state.pipeline_status[next_node] = "active"
+                    st.session_state.pipeline_status[f"{next_node}_text"] = "진행중"
 
             # 로그 터미널 실시간 갱신
             with log_container.container():
                 render_log_terminal(app_logs + graph_logs)
 
-        progress_bar.progress(1.0, text="번역 및 검수 완료")
-
     except Exception as e:
-        progress_bar.progress(1.0, text="오류 발생")
         st.session_state.logs = app_logs + graph_logs
         raise
 
@@ -190,6 +185,8 @@ def _process_translation_result(result: dict):
 with st.sidebar:
     render_sidebar_logo()
 
+    is_busy = st.session_state.current_step not in ("idle", "done")
+
     # ── 시트 연결 ──
     st.markdown(
         '<p class="sidebar-section-title">시트 연결</p>',
@@ -199,7 +196,7 @@ with st.sidebar:
     # URL 고정 로직
     if st.session_state.saved_url and not st.session_state.url_editing:
         render_saved_url(st.session_state.saved_url)
-        if st.button("변경", use_container_width=True):
+        if st.button("변경", use_container_width=True, disabled=is_busy):
             st.session_state.url_editing = True
             st.rerun()
         sheet_url = st.session_state.saved_url
@@ -209,6 +206,7 @@ with st.sidebar:
             value=st.session_state.saved_url,
             placeholder="https://docs.google.com/spreadsheets/d/...",
             label_visibility="collapsed",
+            disabled=is_busy,
         )
         if sheet_url and sheet_url != st.session_state.saved_url:
             st.session_state.saved_url = sheet_url
@@ -237,12 +235,13 @@ with st.sidebar:
     selected_sheet = st.selectbox(
         "작업 대상 시트",
         options=sheet_names,
-        disabled=not sheet_names,
+        disabled=not sheet_names or is_busy,
     )
 
     st.divider()
 
     # ── 번역 설정 ──
+    connected = bool(sheet_names)
     st.markdown(
         '<p class="sidebar-section-title">번역 설정</p>',
         unsafe_allow_html=True,
@@ -253,6 +252,7 @@ with st.sidebar:
         options=list(SUPPORTED_LANGUAGES.keys()),
         default=list(SUPPORTED_LANGUAGES.keys()),
         format_func=lambda x: f"{x.upper()} ({SUPPORTED_LANGUAGES[x]})",
+        disabled=not connected or is_busy,
     )
 
     mode = st.radio(
@@ -263,6 +263,7 @@ with st.sidebar:
         ),
         horizontal=True,
         help="A: 기존 번역 유무와 상관없이 전체 재번역\nB: 빈칸만 번역 (비용 절감)",
+        disabled=not connected or is_busy,
     )
 
     row_limit = st.number_input(
@@ -271,6 +272,7 @@ with st.sidebar:
         max_value=1000,
         value=0,
         help="테스트 시 처리할 최대 행 수를 지정합니다. 0이면 전체 처리.",
+        disabled=not connected or is_busy,
     )
 
     st.divider()
@@ -285,18 +287,39 @@ with st.sidebar:
         value=st.session_state.backup_folder,
         label_visibility="collapsed",
         placeholder="./backups",
+        disabled=not connected or is_busy,
     )
     if backup_folder:
         st.session_state.backup_folder = backup_folder
 
     st.divider()
 
-    start_button = st.button(
-        "작업 시작",
-        type="primary",
-        disabled=(not sheet_url or not selected_sheet or not target_langs),
-        use_container_width=True,
-    )
+    if is_busy:
+        st.markdown("""<style>
+        [data-testid="stSidebar"] .stButton:last-of-type > button {
+            background: var(--error) !important;
+            border-color: var(--error) !important;
+            color: white !important;
+            font-weight: 700 !important;
+        }
+        [data-testid="stSidebar"] .stButton:last-of-type > button p,
+        [data-testid="stSidebar"] .stButton:last-of-type > button span {
+            color: white !important;
+        }
+        [data-testid="stSidebar"] .stButton:last-of-type > button:hover {
+            background: #B04040 !important;
+        }
+        </style>""", unsafe_allow_html=True)
+        cancel_button = st.button("작업 취소", use_container_width=True)
+        start_button = False
+    else:
+        start_button = st.button(
+            "작업 시작",
+            type="primary",
+            disabled=(not sheet_url or not selected_sheet or not target_langs),
+            use_container_width=True,
+        )
+        cancel_button = False
 
 # ── 메인 영역 ────────────────────────────────────────────────────────
 
@@ -304,6 +327,10 @@ render_app_header()
 
 # 스텝 인디케이터
 render_step_indicator(st.session_state.current_step)
+
+# 파이프라인 시각화 (idle 이외일 때 표시)
+if st.session_state.current_step != "idle":
+    render_pipeline(st.session_state.pipeline_status)
 
 # ── 작업 시작 처리 ────────────────────────────────────────────────────
 
@@ -324,107 +351,138 @@ if start_button:
     st.session_state.current_step = "loading"
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.logs = []
+    st.session_state.pipeline_status = {}
 
-    with st.spinner("데이터 로드 및 백업 중..."):
-        try:
-            ws = st.session_state.spreadsheet.worksheet(selected_sheet)
-            df = load_sheet_data(ws)
-            df = ensure_tool_status_column(ws, df)
+    try:
+        ws = st.session_state.spreadsheet.worksheet(selected_sheet)
+        df = load_sheet_data(ws)
+        df = ensure_tool_status_column(ws, df)
 
-            if row_limit > 0:
-                df = df.head(row_limit)
+        if row_limit > 0:
+            df = df.head(row_limit)
 
-            st.session_state.worksheet = ws
-            st.session_state.df = df
+        st.session_state.worksheet = ws
+        st.session_state.df = df
 
-            # Tool_Status 초기값 '대기' 설정 + 시트에 반영
-            status_updates = []
-            for idx, row in df.iterrows():
-                current_status = row.get(TOOL_STATUS_COLUMN, "")
-                if not current_status:
-                    df.at[idx, TOOL_STATUS_COLUMN] = Status.WAITING
-                    status_updates.append({
-                        "row_index": idx,
-                        "column_name": TOOL_STATUS_COLUMN,
-                        "value": Status.WAITING,
-                    })
-            if status_updates:
-                batch_update_sheet(ws, status_updates, df)
+        # Tool_Status 초기값 '대기' 설정 + 시트에 반영
+        status_updates = []
+        for idx, row in df.iterrows():
+            current_status = row.get(TOOL_STATUS_COLUMN, "")
+            if not current_status:
+                df.at[idx, TOOL_STATUS_COLUMN] = Status.WAITING
+                status_updates.append({
+                    "row_index": idx,
+                    "column_name": TOOL_STATUS_COLUMN,
+                    "value": Status.WAITING,
+                })
+        if status_updates:
+            batch_update_sheet(ws, status_updates, df)
 
-            st.session_state._last_sheet = selected_sheet
+        st.session_state._last_sheet = selected_sheet
 
-            # 백업: 메모리(다운로드용) + 로컬 폴더 자동 저장
-            filename, csv_bytes = create_backup_csv(df, selected_sheet)
-            st.session_state.backup_filename = filename
-            st.session_state.backup_csv = csv_bytes
+        # 백업: 메모리(다운로드용) + 로컬 폴더 자동 저장
+        filename, csv_bytes = create_backup_csv(df, selected_sheet)
+        st.session_state.backup_filename = filename
+        st.session_state.backup_csv = csv_bytes
 
-            local_path = save_backup_to_folder(
-                df, selected_sheet, st.session_state.backup_folder
+        save_backup_to_folder(
+            df, selected_sheet, st.session_state.backup_folder
+        )
+
+        initial_state = {
+            "sheet_name": selected_sheet,
+            "mode": mode,
+            "target_languages": target_langs,
+            "original_data": df.to_dict("records"),
+            "backup_data": df.to_dict("records"),
+            "ko_review_results": [],
+            "translation_results": [],
+            "review_results": [],
+            "failed_rows": [],
+            "diff_report_ko": None,
+            "diff_report_translation": None,
+            "wait_for_ko_approval": False,
+            "ko_approval_result": None,
+            "wait_for_final_approval": False,
+            "final_approval_result": None,
+            "current_chunk_index": 0,
+            "total_chunks": 0,
+            "retry_count": {},
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "logs": [],
+            "_updates": [],
+            "_needs_retry": [],
+        }
+
+        config = {"configurable": {"thread_id": st.session_state.thread_id}}
+
+        # 파이프라인 상태: data_backup ~ ko_approval 실행 예정
+        st.session_state.pipeline_status = {
+            "data_backup": "active",
+        }
+
+        result = st.session_state.graph.invoke(initial_state, config=config)
+        st.session_state.graph_result = result
+        st.session_state.logs.extend(result.get("logs", []))
+
+        # invoke 완료 → data_backup ~ ko_review 완료, ko_approval 대기
+        st.session_state.pipeline_status = {
+            "data_backup": "done",
+            "context_glossary": "done",
+            "ko_review": "done",
+            "ko_approval": "active",
+            "ko_approval_text": "승인 대기",
+        }
+
+        ko_results = result.get("ko_review_results", [])
+        if ko_results:
+            original_rows = [
+                {
+                    "Key": r.get(REQUIRED_COLUMNS["key"], ""),
+                    "Korean(ko)": r.get(REQUIRED_COLUMNS["korean"], ""),
+                }
+                for r in df.to_dict("records")
+            ]
+            revised_rows = [
+                {
+                    "Key": r["key"],
+                    "Korean(ko)": r.get("revised", r.get("original", "")),
+                }
+                for r in ko_results
+            ]
+            report_df, report_csv = generate_ko_diff_report(
+                original_rows, revised_rows
             )
+            st.session_state.ko_report_df = report_df
+            st.session_state.ko_report_csv = report_csv
 
-            st.session_state.logs.append(f"데이터 로드 완료: {len(df)}행")
-            st.session_state.logs.append(f"원본 백업 저장: {local_path}")
+        st.session_state.current_step = "ko_review"
 
-            initial_state = {
-                "sheet_name": selected_sheet,
-                "mode": mode,
-                "target_languages": target_langs,
-                "original_data": df.to_dict("records"),
-                "backup_data": df.to_dict("records"),
-                "ko_review_results": [],
-                "translation_results": [],
-                "review_results": [],
-                "failed_rows": [],
-                "diff_report_ko": None,
-                "diff_report_translation": None,
-                "wait_for_ko_approval": False,
-                "ko_approval_result": None,
-                "wait_for_final_approval": False,
-                "final_approval_result": None,
-                "current_chunk_index": 0,
-                "total_chunks": 0,
-                "retry_count": {},
-                "total_input_tokens": 0,
-                "total_output_tokens": 0,
-                "logs": [],
-                "_updates": [],
-                "_needs_retry": [],
-            }
+    except Exception as e:
+        st.error(f"오류 발생: {e}")
+        st.session_state.logs.append(f"오류: {e}")
+        st.session_state.current_step = "idle"
 
-            config = {"configurable": {"thread_id": st.session_state.thread_id}}
-            result = st.session_state.graph.invoke(initial_state, config=config)
-            st.session_state.graph_result = result
-            st.session_state.logs.extend(result.get("logs", []))
+    st.rerun()
 
-            ko_results = result.get("ko_review_results", [])
-            if ko_results:
-                original_rows = [
-                    {
-                        "Key": r.get(REQUIRED_COLUMNS["key"], ""),
-                        "Korean(ko)": r.get(REQUIRED_COLUMNS["korean"], ""),
-                    }
-                    for r in df.to_dict("records")
-                ]
-                revised_rows = [
-                    {
-                        "Key": r["key"],
-                        "Korean(ko)": r.get("revised", r.get("original", "")),
-                    }
-                    for r in ko_results
-                ]
-                report_df, report_csv = generate_ko_diff_report(
-                    original_rows, revised_rows
-                )
-                st.session_state.ko_report_df = report_df
-                st.session_state.ko_report_csv = report_csv
+# ── 작업 취소 처리 ────────────────────────────────────────────────────
 
-            st.session_state.current_step = "ko_review"
-
-        except Exception as e:
-            st.error(f"오류 발생: {e}")
-            st.session_state.logs.append(f"오류: {e}")
-            st.session_state.current_step = "idle"
-
+if cancel_button:
+    for key in [
+        "worksheet", "df", "backup_csv", "backup_filename",
+        "ko_report_df", "ko_report_csv",
+        "translation_report_df", "translation_report_csv",
+        "graph_result", "cost_summary", "translations_applied",
+    ]:
+        if key in st.session_state:
+            del st.session_state[key]
+    graph, checkpointer = build_graph()
+    st.session_state.graph = graph
+    st.session_state.thread_id = str(uuid.uuid4())
+    st.session_state.current_step = "idle"
+    st.session_state.pipeline_status = {}
+    st.session_state.logs.append("사용자가 작업을 취소했습니다.")
     st.rerun()
 
 # ── HITL 1: 한국어 검수 승인 ──────────────────────────────────────────
@@ -443,7 +501,10 @@ if st.session_state.current_step == "ko_review":
     )
 
     if ko_count > 0:
-        st.dataframe(st.session_state.ko_report_df, use_container_width=True)
+        st.dataframe(
+            style_ko_diff(st.session_state.ko_report_df),
+            use_container_width=True,
+        )
         st.download_button(
             label="한국어 변경 리포트 (CSV)",
             data=st.session_state.ko_report_csv,
@@ -493,11 +554,23 @@ if st.session_state.current_step == "ko_review":
             batch_update_sheet(_ws, _upd2, _df)
 
         st.session_state.current_step = "translating"
+        st.session_state.pipeline_status.update({
+            "ko_approval": "done",
+            "ko_approval_text": "승인됨" if btn_approve else "스킵",
+            "translator": "active",
+            "translator_text": "진행중",
+        })
         config = {"configurable": {"thread_id": st.session_state.thread_id}}
 
         try:
             result = _run_translation_streaming(resume_value, config)
             _process_translation_result(result)
+            st.session_state.pipeline_status.update({
+                "translator": "done",
+                "reviewer": "done",
+                "final_approval": "active",
+                "final_approval_text": "승인 대기",
+            })
             st.session_state.current_step = "final_review"
         except Exception as e:
             st.session_state.logs.append(f"번역 오류: {e}")
@@ -531,7 +604,8 @@ if st.session_state.current_step == "final_review":
 
     if review_count > 0:
         st.dataframe(
-            st.session_state.translation_report_df, use_container_width=True
+            style_translation_diff(st.session_state.translation_report_df),
+            use_container_width=True,
         )
         st.download_button(
             label="번역 변경 리포트 (CSV)",
@@ -568,6 +642,12 @@ if st.session_state.current_step == "final_review":
             use_container_width=True,
         ):
             config = {"configurable": {"thread_id": st.session_state.thread_id}}
+            st.session_state.pipeline_status.update({
+                "final_approval": "done",
+                "final_approval_text": "승인됨",
+                "writer": "active",
+                "writer_text": "업데이트 중",
+            })
             with st.spinner("시트 업데이트 중..."):
                 try:
                     result = st.session_state.graph.invoke(
@@ -587,10 +667,23 @@ if st.session_state.current_step == "final_review":
                             updates,
                             st.session_state.df,
                         )
+                        # 변경된 셀 하이라이트 적용
+                        try:
+                            batch_format_cells(
+                                st.session_state.worksheet,
+                                updates,
+                                st.session_state.df,
+                            )
+                        except Exception:
+                            pass  # 포맷팅 실패는 무시 (데이터 업데이트는 이미 완료)
                         st.session_state.logs.append(
                             f"시트 업데이트 완료: {len(updates)}건"
                         )
 
+                    st.session_state.pipeline_status.update({
+                        "writer": "done",
+                        "writer_text": "완료",
+                    })
                     st.session_state.translations_applied = True
                     st.session_state.current_step = "done"
                 except Exception as e:
@@ -744,7 +837,8 @@ if st.session_state.current_step == "done":
 
     render_card_end()
 
-# ── 실행 로그 (터미널 스타일) ─────────────────────────────────────────
+# ── 실행 로그 (접기 형태) ──────────────────────────────────────────────
 
 if st.session_state.logs and st.session_state.current_step != "done":
-    render_log_terminal(st.session_state.logs)
+    with st.expander("실행 로그", expanded=False):
+        render_log_terminal(st.session_state.logs)

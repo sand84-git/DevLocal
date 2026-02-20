@@ -1,4 +1,4 @@
-"""Diff 리포트 생성 (CSV)"""
+"""Diff 리포트 생성 (CSV) + 시각화 스타일링"""
 
 import io
 import pandas as pd
@@ -34,6 +34,36 @@ def generate_ko_diff_report(
     csv_bytes = buffer.getvalue()
 
     return df, csv_bytes
+
+
+def style_ko_diff(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+    """한국어 Diff DataFrame에 색상 코딩 적용."""
+    if df.empty:
+        return df.style
+
+    def _highlight(col):
+        if col.name == "기존 한국어":
+            return ["background-color: #FFEBEE"] * len(col)
+        if col.name == "수정 제안":
+            return ["background-color: #E8F5E9"] * len(col)
+        return [""] * len(col)
+
+    return df.style.apply(_highlight)
+
+
+def style_translation_diff(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+    """번역 Diff DataFrame에 색상 코딩 적용."""
+    if df.empty:
+        return df.style
+
+    def _highlight(col):
+        if col.name == "기존 번역":
+            return ["background-color: #FFEBEE"] * len(col)
+        if col.name == "새 번역":
+            return ["background-color: #E8F5E9"] * len(col)
+        return [""] * len(col)
+
+    return df.style.apply(_highlight)
 
 
 def generate_translation_diff_report(

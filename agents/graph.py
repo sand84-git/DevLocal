@@ -1,5 +1,6 @@
 """LangGraph 워크플로우 정의 — 6 Node + HITL 2곳 interrupt"""
 
+import re
 import json
 import litellm
 import streamlit as st
@@ -14,7 +15,7 @@ from agents.nodes.context_glossary import context_glossary_node
 from agents.nodes.translator import translator_node
 from agents.nodes.reviewer import reviewer_node
 from agents.nodes.writer import writer_node
-from config.constants import LLM_MODEL, REQUIRED_COLUMNS, CHUNK_SIZE
+from config.constants import LLM_MODEL, REQUIRED_COLUMNS, CHUNK_SIZE, TAG_PATTERNS
 
 
 # ── 한국어 검수 노드 (AI 분석만, interrupt 없음) ─────────────────────
@@ -78,7 +79,42 @@ def ko_review_node(state: LocalizationState) -> dict:
         except Exception as e:
             logs.append(f"[한국어 검수] 오류: {e}")
 
-    logs.append(f"[한국어 검수] 수정 제안: {len(ko_review_results)}건")
+    # 태그 보존 후처리: AI가 태그를 삭제/변경한 경우 원본에서 복원
+    original_map = {r["key"]: r[REQUIRED_COLUMNS["korean"]] for r in ko_rows}
+    validated_results = []
+    restored_count = 0
+
+    for item in ko_review_results:
+        key = item.get("key", "")
+        original = original_map.get(key, "")
+        revised = item.get("revised", "")
+
+        if not original or not revised:
+            validated_results.append(item)
+            continue
+
+        # 각 태그 패턴에 대해 원본과 수정본의 태그 일치 검증
+        tag_broken = False
+        for pattern in TAG_PATTERNS:
+            orig_tags = re.findall(pattern, original)
+            rev_tags = re.findall(pattern, revised)
+            if sorted(orig_tags) != sorted(rev_tags):
+                tag_broken = True
+                break
+
+        if tag_broken:
+            # 태그가 손상된 수정은 버림 (원본 유지)
+            restored_count += 1
+        else:
+            validated_results.append(item)
+
+    if restored_count:
+        logs.append(
+            f"[한국어 검수] 태그 손상 수정 {restored_count}건 제외 (원본 유지)"
+        )
+
+    ko_review_results = validated_results
+    logs.append(f"[한국어 검수] 최종 수정 제안: {len(ko_review_results)}건")
 
     return {
         "ko_review_results": ko_review_results,

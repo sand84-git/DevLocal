@@ -41,6 +41,7 @@ def writer_node(state: LocalizationState) -> dict:
             "row_index": row_idx,
             "column_name": lang_col,
             "value": translated,
+            "change_type": "translation",
         })
 
         # Tool_Status를 최종완료로 업데이트
@@ -48,6 +49,7 @@ def writer_node(state: LocalizationState) -> dict:
             "row_index": row_idx,
             "column_name": TOOL_STATUS_COLUMN,
             "value": Status.COMPLETED,
+            "change_type": "completed",
         })
 
     # 검수실패 행 마킹
@@ -61,6 +63,7 @@ def writer_node(state: LocalizationState) -> dict:
                 "row_index": row_idx,
                 "column_name": TOOL_STATUS_COLUMN,
                 "value": Status.REVIEW_FAILED,
+                "change_type": "review_failed",
             })
 
     success_count = len(review_results)

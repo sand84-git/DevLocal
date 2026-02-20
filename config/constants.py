@@ -6,8 +6,10 @@ FORBIDDEN_SHEETS = ["사용법", "Texture", "수정금지_Common"]
 # Tool_Status 상태값
 class Status:
     WAITING = "대기"
+    KO_REVIEWING = "한국어검수중"
     KO_REVIEW_DONE = "한국어검수완료"
     TRANSLATING = "번역중"
+    REVIEWING = "검수중"
     REVIEW_FAILED = "검수실패"
     COMPLETED = "최종완료"
 
