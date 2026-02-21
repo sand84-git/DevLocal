@@ -4,7 +4,7 @@
 구글 스프레드시트 기반 게임 텍스트(한국어)를 AI(Grok 4.1 Fast Reasoning)로 다국어(EN, JA) 자동 번역/검수하는 Streamlit 웹앱.
 
 ## 기술 스택
-- **Frontend**: Streamlit (Indigo + Dark Sidebar SaaS 테마)
+- **Frontend**: Streamlit (Indigo + Dark Sidebar SaaS 테마, 커스텀 CSS)
 - **Agent Orchestration**: LangGraph 0.6 (8 Node + HITL 2곳 interrupt)
 - **Google Sheets**: gspread (Batch Read/Write + Exponential Backoff)
 - **LLM**: LiteLLM → xai/grok-4-1-fast-reasoning (timeout=120s)
@@ -24,6 +24,7 @@ data_backup → context_glossary → ko_review → ko_approval(HITL 1)
 ## 프로젝트 구조
 ```
 app.py                    # Streamlit 메인 앱 (stream_mode="updates" 실시간 UI)
+.app_config.json          # 시트 URL/백업폴더 영속 저장 (gitignore)
 agents/
   graph.py                # LangGraph StateGraph (8 Node + HITL 2곳)
   state.py                # LocalizationState TypedDict
@@ -33,17 +34,24 @@ agents/
     context_glossary.py   # Node 2: 컨텍스트 & 글로서리 셋업
     translator.py         # Node 3: 청크 단위 번역 (LLM)
     reviewer.py           # Node 4: 정규식+Glossary+AI 검수 (청크 배치 LLM)
-    writer.py             # Node 5: Batch Update 목록 생성
+    writer.py             # Node 5: Batch Update 목록 생성 (원본 비교 → 변경 셀만 컬러링)
 config/
   constants.py            # 상수 (CHUNK_SIZE=15, LLM_MODEL, 태그패턴 등)
   glossary.py             # 언어별 Glossary 딕셔너리
 utils/
-  sheets.py               # gspread 래퍼 (인증, 로드, 백업, Batch Write, Backoff)
+  sheets.py               # gspread 래퍼 (인증, 로드, 백업, Batch Write, Backoff, 셀 포맷팅)
   validation.py           # 정규식 태그 검증 + Glossary 후처리
   diff_report.py          # Diff 리포트 CSV 생성
-  ui_components.py        # 모던 SaaS UI 컴포넌트 (CSS, 카드, 스텝 인디케이터)
-  cost_tracker.py         # 토큰/비용 추적
+  ui_components.py        # 모던 SaaS UI 컴포넌트 (CSS, 카드, 스텝 인디케이터+프로그레스)
+  cost_tracker.py         # 토큰/비용 추적 (CostTracker 클래스)
 ```
+
+## UI 아키텍처
+- **테마**: Indigo + Dark Sidebar SaaS (DM Sans/Inter 폰트)
+- **스텝 인디케이터**: 3단계 (한국어 검수 → 번역/검수 → 최종 승인) + 내부 프로그레스바 통합
+- **실시간 업데이트**: `st.empty()` + `graph.stream(stream_mode="updates")`로 노드별 프로그레스
+- **로그 터미널**: 하단 고정, 모노스페이스 CSS (translating 단계에서는 스트리밍 영역 내 표시)
+- **번역 취소**: translating 단계에서 그래프 재생성 → ko_approval interrupt로 복귀
 
 ## 구현 워크플로우 규칙
 - 각 구현 단계(Phase)마다 바로 코드를 작성하지 않는다
@@ -58,6 +66,11 @@ utils/
 - LLM 호출은 반드시 청크 배치(CHUNK_SIZE=15) + timeout=120s 적용
 - Reviewer도 청크 배치 호출 (개별 호출 절대 금지 — rate limit 및 멈춤 원인)
 - 번역 에러 시 그래프 재생성 후 idle로 복구 (translating 멈춤 상태 방지)
+- Writer: 원본 값과 비교하여 실제 변경된 셀만 시트 업데이트 & 컬러링
+- Writer: 같은 Key가 일부 언어 성공 + 일부 실패 시, Tool_Status는 "검수실패"로 단일 설정
+- 한국어 검수 제안 0건 시 자동 승인 (빈 카드 표시 안 함)
+- 시트 URL/백업폴더는 `.app_config.json`에 영속 저장 (gitignore 포함)
+- Translator: LLM JSON 파싱 후 `\n`→`\\n`, `\t`→`\\t` 리터럴 복원 필수
 
 ## LLM 설정
 - **모델**: `xai/grok-4-1-fast-reasoning`

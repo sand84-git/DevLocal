@@ -5,6 +5,37 @@
 
 ---
 
+## 구현 완료 현황 (2026-02-21 기준)
+
+> 아래는 PRD 대비 실제 구현 상태입니다. `[구현 차이]` 태그로 PRD와 다른 부분을 표기합니다.
+
+| PRD 항목 | 상태 | 비고 |
+|---|---|---|
+| 1. 프로젝트 개요 | 완료 | |
+| 2. 게임 세계관/로컬라이징 정책 | 완료 | Glossary JA 7개 항목 등록 |
+| 3. 구글 시트 데이터 구조 관리 | 완료 | Tool_Status 자동 생성 + 상태값 6종 |
+| 4.1 작업 모드 (A/B) | 완료 | |
+| 4.2 Step 1: 한국어 검수 (HITL 1) | 완료 | `[구현 차이]` ko_review(AI분석)와 ko_approval(interrupt)를 별도 노드로 분리. 제안 0건 시 자동 승인. |
+| 4.3 Step 2: 5 Node 파이프라인 | 완료 | `[구현 차이]` 실제 8 Node (ko_review + ko_approval 추가). stream_mode="updates"로 실시간 프로그레스. |
+| 4.4 Step 3: 최종 승인 (HITL 2) | 완료 | |
+| 4.5 Batch Read/Write | 완료 | Exponential Backoff (5회, 1~16s) |
+| 4.6 배치 처리 단위 | 완료 | CHUNK_SIZE=15행 |
+| 5. UI/UX | 완료 | `[구현 차이]` Warm & Minimalist → **Indigo + Dark Sidebar SaaS** 테마로 변경. 스텝 인디케이터에 프로그레스바 통합. |
+| 6. 백업 | 완료 | 로컬 폴더 저장 + CSV 다운로드 버튼 |
+| 7.1 LangGraph State | 완료 | MemorySaver + st.session_state.thread_id |
+| 7.3 정규식 검증 | 완료 | TAG_PATTERNS 10개 패턴 |
+| 7.4 JA 등급 후처리 | 완료 | apply_glossary_postprocess() |
+| 7.5 LLM 연동 | 완료 | xai/grok-4-1-fast-reasoning |
+
+### PRD 대비 추가 구현 사항
+- **번역 취소 기능**: translating 단계에서 그래프 재생성 → ko_approval로 복귀
+- **시트 URL 영속 저장**: `.app_config.json`으로 브라우저 세션 간 URL 유지
+- **변경 셀만 컬러링**: Writer가 원본과 비교하여 실제 변경된 셀만 하이라이트
+- **Tool_Status 충돌 방지**: 같은 Key 일부 언어 성공/실패 시 "검수실패"로 단일 설정
+- **Translator `\n`/`\t` 복원**: LLM JSON 파싱 후 리터럴 이스케이프 복원
+
+---
+
 ## [AI 코더(Developer Agent)를 위한 사전 지시사항]
 
 당신은 이 PRD를 완벽하게 숙지하고, 요구사항을 100% 반영한 파이썬 웹 어플리케이션 코드를 작성해야 합니다. 본 툴은 코딩을 모르는 비개발자(기획, QA 직군)가 브라우저에서 버튼 클릭만으로 사용할 수 있도록 터미널(콘솔) 화면 없이 오직 Streamlit UI 내에서 모든 조작과 피드백이 이루어져야 합니다.

@@ -1,6 +1,7 @@
 # UI Redesign Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **상태: 완료 및 대체됨** — 이 계획은 실행 완료 후 Indigo + Dark Sidebar SaaS 테마로 추가 변경되었습니다.
+> 현재 UI 구현은 `utils/ui_components.py`와 `app.py`를 참조하세요.
 
 **Goal:** app.py의 UI를 Warm & Minimalist 스타일로 전면 리디자인 (비즈니스 로직 변경 없음)
 

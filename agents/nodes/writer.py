@@ -20,6 +20,11 @@ def writer_node(state: LocalizationState) -> dict:
         key = row.get(REQUIRED_COLUMNS["key"], "")
         key_to_index[key] = idx
 
+    # 검수실패 Key 집합 먼저 수집 (Tool_Status 충돌 방지)
+    failed_keys = set()
+    for fail in failed_rows:
+        failed_keys.add(fail["key"])
+
     # 업데이트 목록 생성
     updates = []
     completed_keys = set()  # Tool_Status 중복 방지
@@ -48,8 +53,8 @@ def writer_node(state: LocalizationState) -> dict:
                 "change_type": "translation",
             })
 
-        # Tool_Status를 최종완료로 업데이트 (변경 여부와 무관하게)
-        if key not in completed_keys:
+        # Tool_Status: 실패 Key가 아닌 경우만 최종완료 (실패는 아래에서 처리)
+        if key not in completed_keys and key not in failed_keys:
             completed_keys.add(key)
             updates.append({
                 "row_index": row_idx,
@@ -59,10 +64,8 @@ def writer_node(state: LocalizationState) -> dict:
             })
 
     # 검수실패 행 마킹
-    failed_keys = set()
     for fail in failed_rows:
         key = fail["key"]
-        failed_keys.add(key)
         row_idx = key_to_index.get(key)
         if row_idx is not None:
             updates.append({

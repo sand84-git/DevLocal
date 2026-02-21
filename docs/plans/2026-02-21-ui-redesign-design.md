@@ -1,5 +1,8 @@
 # UI Redesign Design — Warm & Minimalist 전면 리디자인
 
+> **상태: 완료 및 대체됨** — 이 디자인은 실행 후 Indigo + Dark Sidebar SaaS 테마로 전환되었습니다.
+> 현재 UI 구현은 `utils/ui_components.py`를 참조하세요.
+
 > 날짜: 2026-02-21
 > 접근: Streamlit 네이티브 + 핵심 요소 커스텀 HTML (A+B 혼합)
 
