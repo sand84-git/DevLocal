@@ -6,6 +6,7 @@ interface FooterProps {
   actionLabel?: string;
   actionIcon?: string;
   actionDisabled?: boolean;
+  actionCompleted?: boolean;
   showCancel?: boolean;
   onCancel?: () => void;
   showExport?: boolean;
@@ -18,6 +19,7 @@ export default function Footer({
   actionLabel = "Next Step",
   actionIcon = "arrow_forward",
   actionDisabled = false,
+  actionCompleted = false,
   showCancel = false,
   onCancel,
   showExport = false,
@@ -122,7 +124,11 @@ export default function Footer({
           <button
             onClick={onAction}
             disabled={actionDisabled}
-            className="group flex items-center gap-2 rounded-lg bg-primary px-8 py-2.5 text-sm font-bold text-white hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 h-11 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`group flex items-center gap-2 rounded-lg px-8 py-2.5 text-sm font-bold text-white transition-all h-11 disabled:opacity-50 disabled:cursor-not-allowed ${
+              actionCompleted
+                ? "bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
+                : "bg-primary hover:bg-primary-dark shadow-lg shadow-primary/30"
+            }`}
           >
             {actionLabel}
             <span className="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">

@@ -3,6 +3,7 @@
 import re
 import json
 import litellm
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
@@ -20,7 +21,7 @@ from config.constants import LLM_MODEL, REQUIRED_COLUMNS, CHUNK_SIZE, TAG_PATTER
 
 # ── 한국어 검수 노드 (AI 분석만, interrupt 없음) ─────────────────────
 
-def ko_review_node(state: LocalizationState) -> dict:
+def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
     """
     한국어 맞춤법/띄어쓰기 검수 — AI 분석만 수행.
     interrupt는 별도 ko_approval_node에서 처리.
@@ -29,6 +30,9 @@ def ko_review_node(state: LocalizationState) -> dict:
     logs = list(state.get("logs", []))
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
+
+    # 청크별 이벤트 emitter (없으면 무시)
+    emitter = config.get("configurable", {}).get("event_emitter") if config else None
 
     api_key = get_xai_api_key()
 
@@ -45,6 +49,8 @@ def ko_review_node(state: LocalizationState) -> dict:
     # 청크 단위로 AI 검수
     ko_review_results = []
     system_prompt = build_ko_proofreader_prompt()
+    total_ko_rows = len(ko_rows)
+    processed_count = 0
 
     for chunk_start in range(0, len(ko_rows), CHUNK_SIZE):
         chunk = ko_rows[chunk_start:chunk_start + CHUNK_SIZE]
@@ -76,7 +82,16 @@ def ko_review_node(state: LocalizationState) -> dict:
             items = json.loads(content)
             ko_review_results.extend(items)
 
+            # 청크별 부분 결과를 프론트엔드에 전송
+            processed_count += len(chunk)
+            if emitter:
+                emitter("ko_review_chunk", {
+                    "chunk_results": items,
+                    "progress": {"done": processed_count, "total": total_ko_rows},
+                })
+
         except Exception as e:
+            processed_count += len(chunk)
             logs.append(f"[한국어 검수] 오류: {e}")
 
     # 태그 보존 후처리: AI가 태그를 삭제/변경한 경우 원본에서 복원

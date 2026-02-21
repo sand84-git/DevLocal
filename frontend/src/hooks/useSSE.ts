@@ -4,6 +4,9 @@ import type {
   NodeUpdateData,
   KoReviewReadyData,
   FinalReviewReadyData,
+  KoReviewChunkData,
+  TranslationChunkData,
+  ReviewChunkData,
 } from "../types";
 
 // LLM pricing (config/constants.py와 동일)
@@ -24,6 +27,7 @@ export function useSSE() {
     esRef.current = es;
     const store = useAppStore.getState;
 
+    /* ── 노드 수준 업데이트 ── */
     es.addEventListener("node_update", (e) => {
       const data: NodeUpdateData = JSON.parse(e.data);
       const { setLogs, setProgress } = store();
@@ -44,15 +48,62 @@ export function useSSE() {
       }
     });
 
+    /* ── 원본 데이터 수신 (Loading 화면 테이블용) ── */
+    es.addEventListener("original_data", (e) => {
+      const data = JSON.parse(e.data);
+      store().setOriginalRows(data.rows);
+    });
+
+    /* ── 한국어 검수 — 청크별 부분 결과 ── */
+    es.addEventListener("ko_review_chunk", (e) => {
+      const data: KoReviewChunkData = JSON.parse(e.data);
+      const s = store();
+      s.appendPartialKoResults(data.chunk_results);
+      s.setChunkProgress(data.progress);
+      const pct = Math.round(
+        (data.progress.done / data.progress.total) * 100,
+      );
+      s.setProgress(
+        pct,
+        `Reviewing Korean... (${data.progress.done}/${data.progress.total})`,
+      );
+    });
+
+    /* ── 번역 — 청크별 부분 결과 ── */
+    es.addEventListener("translation_chunk", (e) => {
+      const data: TranslationChunkData = JSON.parse(e.data);
+      const s = store();
+      s.appendPartialTranslations(data.chunk_results);
+      s.setChunkProgress(data.progress);
+      const pct = Math.round(
+        (data.progress.done / data.progress.total) * 100,
+      );
+      const lang = data.progress.lang?.toUpperCase() ?? "";
+      s.setProgress(
+        pct,
+        `Translating ${lang}... (${data.progress.done}/${data.progress.total})`,
+      );
+    });
+
+    /* ── 검수 — 청크별 부분 결과 ── */
+    es.addEventListener("review_chunk", (e) => {
+      const data: ReviewChunkData = JSON.parse(e.data);
+      const s = store();
+      s.appendPartialReviews(data.chunk_results);
+      s.setChunkProgress(data.progress);
+    });
+
+    /* ── 한국어 검수 완료 → 600ms dwell 후 화면 전환 ── */
     es.addEventListener("ko_review_ready", (e) => {
       const data: KoReviewReadyData = JSON.parse(e.data);
       const s = store();
       s.setKoReviewResults(data.results);
       s.setTotalRows(data.count);
       s.setProgress(100, "Korean review complete");
-      s.setCurrentStep("ko_review");
+      setTimeout(() => s.setCurrentStep("ko_review"), 600);
     });
 
+    /* ── 번역 검수 완료 → 600ms dwell 후 화면 전환 ── */
     es.addEventListener("final_review_ready", (e) => {
       const data: FinalReviewReadyData = JSON.parse(e.data);
       const s = store();
@@ -69,7 +120,7 @@ export function useSSE() {
         });
       }
       s.setProgress(100, "Translation complete");
-      s.setCurrentStep("final_review");
+      setTimeout(() => s.setCurrentStep("final_review"), 600);
     });
 
     es.addEventListener("done", () => {

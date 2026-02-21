@@ -2,6 +2,7 @@
 
 import json
 import litellm
+from langchain_core.runnables import RunnableConfig
 from backend.config import get_xai_api_key
 from agents.state import LocalizationState
 from agents.prompts import build_reviewer_prompt
@@ -41,7 +42,7 @@ def _build_review_prompt_batch(items_for_review: list[dict]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def reviewer_node(state: LocalizationState) -> dict:
+def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
     """
     번역 결과물 검수:
     1. Glossary 후처리 (JA 등급명 강제 치환)
@@ -52,6 +53,9 @@ def reviewer_node(state: LocalizationState) -> dict:
     태그 검증 실패 항목은 _needs_retry로 translator에 재전달.
     3회 재시도 후에도 실패하면 failed_rows에 검수실패로 마킹.
     """
+    # 청크별 이벤트 emitter (없으면 무시)
+    emitter = config.get("configurable", {}).get("event_emitter") if config else None
+
     original_data = state.get("original_data", [])
     translation_results = list(state.get("translation_results", []))
 
@@ -253,6 +257,16 @@ def reviewer_node(state: LocalizationState) -> dict:
         })
 
     all_review_results = prev_review_results + new_review_results
+
+    # 검수 완료 결과를 프론트엔드에 전송
+    if emitter and new_review_results:
+        emitter("review_chunk", {
+            "chunk_results": new_review_results,
+            "progress": {
+                "done": len(all_review_results),
+                "total": len(all_review_results) + len(needs_retry_items),
+            },
+        })
 
     logs.append(
         f"[Node 4] 검수 완료: 누적 통과 {len(all_review_results)}건, "

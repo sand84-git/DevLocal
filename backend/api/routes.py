@@ -158,11 +158,39 @@ def api_start(req: StartRequest):
 
 # ── SSE Stream ───────────────────────────────────────────────────────
 
+def _make_emitter(session):
+    """노드에서 호출할 수 있는 이벤트 emitter 클로저 생성"""
+    def emit(event_type: str, data: dict):
+        try:
+            asyncio.run_coroutine_threadsafe(
+                session.event_queue.put((event_type, data)),
+                session._loop,
+            )
+        except Exception:
+            pass
+    return emit
+
+
+def _make_config_with_emitter(session):
+    """event emitter가 주입된 그래프 config 반환"""
+    emitter = _make_emitter(session)
+    return {
+        **session.config,
+        "configurable": {
+            **session.config.get("configurable", {}),
+            "event_emitter": emitter,
+        },
+    }
+
+
 def _run_initial_phase(session):
     """초기 phase 실행 (data_backup → context_glossary → ko_review → ko_approval interrupt)"""
     try:
+        config = _make_config_with_emitter(session)
+        emitter = config["configurable"]["event_emitter"]
+
         for event in session.graph.stream(
-            session.initial_state, config=session.config, stream_mode="updates"
+            session.initial_state, config=config, stream_mode="updates"
         ):
             if "__interrupt__" in event:
                 asyncio.run_coroutine_threadsafe(
@@ -174,6 +202,17 @@ def _run_initial_phase(session):
             node_name = list(event.keys())[0]
             node_output = event[node_name]
             node_logs = node_output.get("logs", [])
+
+            # data_backup 완료 시 원본 데이터를 프론트엔드에 전송
+            if node_name == "data_backup":
+                orig_data = node_output.get("original_data", [])
+                if orig_data:
+                    rows = [
+                        {"key": r.get(REQUIRED_COLUMNS["key"], ""),
+                         "korean": r.get(REQUIRED_COLUMNS["korean"], "")}
+                        for r in orig_data
+                    ]
+                    emitter("original_data", {"rows": rows})
 
             asyncio.run_coroutine_threadsafe(
                 session.event_queue.put(("node_update", {
@@ -259,8 +298,10 @@ async def api_stream(session_id: str):
 def _run_translation_phase(session, resume_value: str):
     """번역 phase 실행 (translator → reviewer → final_approval interrupt)"""
     try:
+        config = _make_config_with_emitter(session)
+
         for event in session.graph.stream(
-            Command(resume=resume_value), session.config, stream_mode="updates"
+            Command(resume=resume_value), config, stream_mode="updates"
         ):
             if "__interrupt__" in event:
                 break

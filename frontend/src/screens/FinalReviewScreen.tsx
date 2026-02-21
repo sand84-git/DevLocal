@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { approveFinal, getDownloadUrl } from "../api/client";
+import { highlightDiff } from "../utils/diffHighlight";
+import { STAGGER, staggerDelay } from "../utils/stagger";
 import ProgressSection from "../components/ProgressSection";
 import Footer from "../components/Footer";
 
@@ -81,7 +83,7 @@ export default function FinalReviewScreen() {
       <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32">
         <div className="mx-auto max-w-[1400px] space-y-8">
           {/* Title */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className={`flex flex-col md:flex-row md:items-end justify-between gap-6 ${STAGGER}`} style={staggerDelay(0)}>
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold text-text-main tracking-tight">
@@ -110,18 +112,20 @@ export default function FinalReviewScreen() {
           </div>
 
           {/* Progress */}
-          <ProgressSection
-            title="Overall Progress"
-            total={reviewResults.length}
-            percent={
-              reviewResults.length > 0
-                ? Math.round((decidedCount / reviewResults.length) * 100)
-                : 0
-            }
-            done={decidedCount}
-            pending={reviewResults.length - decidedCount}
-            errors={failedRows.length}
-          />
+          <div className={STAGGER} style={staggerDelay(1)}>
+            <ProgressSection
+              title="Overall Progress"
+              total={reviewResults.length}
+              percent={
+                reviewResults.length > 0
+                  ? Math.round((decidedCount / reviewResults.length) * 100)
+                  : 0
+              }
+              done={decidedCount}
+              pending={reviewResults.length - decidedCount}
+              errors={failedRows.length}
+            />
+          </div>
 
           {/* Error banner */}
           {error && (
@@ -138,7 +142,7 @@ export default function FinalReviewScreen() {
           )}
 
           {/* Review table */}
-          <div className="flex flex-col min-h-[600px]">
+          <div className={`flex flex-col min-h-[600px] ${STAGGER}`} style={staggerDelay(2)}>
             <div className="w-full bg-white border border-border-subtle rounded-xl overflow-hidden flex flex-col shadow-md h-full">
               {/* Toolbar */}
               <div className="p-4 border-b border-border-subtle bg-surface-pale/50 flex flex-wrap justify-between items-center gap-4">
@@ -222,10 +226,15 @@ export default function FinalReviewScreen() {
               <div className="overflow-y-auto custom-scrollbar flex-1 bg-white min-h-[500px]">
                 {pageItems.map((item) => {
                   const decisionKey = `${item.key}_${item.lang}`;
+                  const isUnchanged =
+                    item.old_translation === item.translated;
+
                   return (
                     <div
                       key={decisionKey}
-                      className="grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-colors group"
+                      className={`grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-all duration-200 group ${
+                        isUnchanged ? "opacity-45 hover:opacity-100" : ""
+                      }`}
                     >
                       {/* AI Note */}
                       <div className="col-span-1">
@@ -258,11 +267,20 @@ export default function FinalReviewScreen() {
                         )}
                       </div>
 
-                      {/* New Translation */}
+                      {/* New Translation — diff highlight */}
                       <div className="col-span-4 text-text-main text-sm leading-relaxed">
-                        <span className="bg-diff-added-bg text-diff-added-text px-1.5 py-0.5 rounded border border-diff-added-text/20 font-semibold">
-                          {item.translated}
-                        </span>
+                        {item.old_translation && !isUnchanged ? (
+                          <span className="bg-diff-added-bg text-diff-added-text px-1.5 py-0.5 rounded border border-diff-added-text/20 font-semibold">
+                            {highlightDiff(
+                              item.old_translation,
+                              item.translated,
+                            )}
+                          </span>
+                        ) : (
+                          <span className="bg-diff-added-bg text-diff-added-text px-1.5 py-0.5 rounded border border-diff-added-text/20 font-semibold">
+                            {item.translated}
+                          </span>
+                        )}
                       </div>
 
                       {/* Action */}

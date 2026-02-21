@@ -1,5 +1,6 @@
 import { useAppStore } from "../store/useAppStore";
 import { getDownloadUrl } from "../api/client";
+import { STAGGER, staggerDelay } from "../utils/stagger";
 import Footer from "../components/Footer";
 
 export default function DoneScreen() {
@@ -22,7 +23,7 @@ export default function DoneScreen() {
     <>
       <main className="flex-1 flex flex-col py-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full animate-celebrate">
         {/* Title */}
-        <div className="w-full mb-10 text-center">
+        <div className={`w-full mb-10 text-center ${STAGGER}`} style={staggerDelay(0)}>
           <h1 className="text-3xl font-bold text-text-main tracking-tight mb-3">
             Final Review & Push
           </h1>
@@ -34,7 +35,7 @@ export default function DoneScreen() {
 
         <div className="w-full space-y-8">
           {/* Success card */}
-          <div className="bg-gradient-to-br from-white to-sky-50 rounded-2xl p-8 border border-sky-100 shadow-sm relative overflow-hidden">
+          <div className={`bg-gradient-to-br from-white to-sky-50 rounded-2xl p-8 border border-sky-100 shadow-sm relative overflow-hidden ${STAGGER}`} style={staggerDelay(1)}>
             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-sky-400/10 rounded-full blur-2xl" />
             <div className="flex items-start gap-6 relative z-10">
               <div className="size-16 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center shrink-0 text-success">
@@ -75,7 +76,7 @@ export default function DoneScreen() {
           </div>
 
           {/* Metric cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ${STAGGER}`} style={staggerDelay(2)}>
             <MetricCard
               icon="token"
               iconColor="bg-orange-50 text-orange-500"
