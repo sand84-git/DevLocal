@@ -182,10 +182,10 @@
   animation: sectionFadeOut 400ms ease-out forwards;
 }
 
-/* ── Section Fade-in (review header 등장) ── */
+/* ── Section Fade-in (순수 opacity — translateY 제거로 지터 방지) ── */
 @keyframes sectionFadeIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .animate-section-fade-in {
   animation: sectionFadeIn 400ms ease-out both;

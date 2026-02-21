@@ -42,38 +42,36 @@ export default function TranslationWorkspace() {
   const [submitting, setSubmitting] = useState(false);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
 
-  /* ── Mode & Transition ── */
+  /* ── Mode ── */
   const mode = currentStep === "final_review" ? "review" : "translating";
   const prevModeRef = useRef(mode);
-  const [transition, setTransition] = useState<
-    "idle" | "exiting" | "entering"
-  >("idle");
+  const [justEnteredReview, setJustEnteredReview] = useState(false);
 
   useEffect(() => {
     if (prevModeRef.current === "translating" && mode === "review") {
       setPage(1);
       setExpandedNote(null);
-      setTransition("exiting");
-      const t1 = setTimeout(() => setTransition("entering"), 400);
-      const t2 = setTimeout(() => setTransition("idle"), 800);
+      setJustEnteredReview(true);
+      const t = setTimeout(() => setJustEnteredReview(false), 600);
       prevModeRef.current = mode;
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+      return () => clearTimeout(t);
     }
     prevModeRef.current = mode;
   }, [mode]);
-
-  const showProgress = mode === "translating" || transition === "exiting";
-  const showReviewHeader = mode === "review" && transition !== "exiting";
 
   /* ── Row drip-feed animation ── */
   const doneKeysRef = useRef(new Set<string>());
 
   /* ── Derived ── */
   const isComplete = progressPercent >= 100;
-  const animPct = useCountUp(progressPercent, 500);
+
+  /* ── Progress card values (translating → review 전환) ── */
+  const cardPercent = mode === "review" ? 100 : progressPercent;
+  const animPct = useCountUp(cardPercent, 500);
+  const cardLabel = mode === "review"
+    ? "Translation & Review complete"
+    : (progressLabel || "Initializing...");
+  const cardComplete = mode === "review" || isComplete;
 
   const agentPhase: "init" | "translator" | "reviewer" | "complete" =
     isComplete
@@ -187,11 +185,11 @@ export default function TranslationWorkspace() {
   );
   const unchangedCount = reviewResults.length - changedCount;
 
-  const barColor = isComplete ? "bg-emerald-500" : "bg-primary";
-  const barShadow = isComplete
+  const barColor = cardComplete ? "bg-emerald-500" : "bg-primary";
+  const barShadow = cardComplete
     ? "shadow-[0_0_12px_rgba(16,185,129,0.4)]"
     : "shadow-[0_0_12px_rgba(14,165,233,0.3)]";
-  const pctColor = isComplete ? "text-emerald-500" : "text-primary";
+  const pctColor = cardComplete ? "text-emerald-500" : "text-primary";
 
   /* ── Handlers ── */
   async function handleCancel() {
@@ -243,12 +241,17 @@ export default function TranslationWorkspace() {
             mode === "review" ? "max-w-[1400px]" : "max-w-5xl"
           }`}
         >
-          {/* ═══ Progress Section (translating) ═══ */}
-          {showProgress && (
+          {/* ═══ Title Area — cross-fade (no height collapse) ═══ */}
+          <div className="relative min-h-[72px]">
+            {/* Translating Title */}
             <div
-              className={`space-y-4 ${transition === "exiting" ? "animate-section-fade-out" : ""}`}
+              className={`transition-opacity duration-400 ease-out ${
+                mode === "translating"
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none absolute inset-0"
+              }`}
             >
-              <div className="text-center animate-fade-in">
+              <div className="text-center">
                 <h1 className="text-2xl font-bold text-text-main">
                   Translating...
                 </h1>
@@ -256,185 +259,15 @@ export default function TranslationWorkspace() {
                   AI is translating your content. This may take a few minutes.
                 </p>
               </div>
-
-              {/* Progress bar */}
-              <section className="rounded-xl border border-border-subtle bg-bg-surface p-6 shadow-soft animate-fade-slide-up">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-text-muted animate-breathe">
-                    {progressLabel || "Initializing..."}
-                  </span>
-                  <span
-                    className={`text-2xl font-bold tabular-nums ${pctColor}`}
-                  >
-                    {animPct}%
-                  </span>
-                </div>
-                <div className="relative w-full overflow-hidden rounded-full bg-slate-100 h-3.5">
-                  <div
-                    className={`absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out ${barColor} ${barShadow}`}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                  {progressPercent > 0 && progressPercent < 100 && (
-                    <div
-                      className="absolute inset-0 animate-shimmer"
-                      style={{
-                        background:
-                          "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)",
-                        width: `${progressPercent}%`,
-                      }}
-                    />
-                  )}
-                  {isComplete && (
-                    <div
-                      className="absolute inset-0 animate-shimmer-once"
-                      style={{
-                        background:
-                          "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)",
-                      }}
-                    />
-                  )}
-                </div>
-              </section>
-
-              {/* Agent pipeline indicator */}
-              {agentPhase !== "init" && (
-                <div className="flex items-center justify-center gap-3 animate-fade-in">
-                  {/* Translator */}
-                  <div
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
-                      agentPhase === "translator"
-                        ? "border-primary bg-primary-light/60 shadow-sm"
-                        : agentPhase === "reviewer" ||
-                            agentPhase === "complete"
-                          ? "border-emerald-200 bg-emerald-50/60"
-                          : "border-border-subtle bg-slate-50"
-                    }`}
-                  >
-                    <span
-                      className={`material-symbols-outlined text-lg ${
-                        agentPhase === "translator"
-                          ? "text-primary animate-spin360"
-                          : agentPhase === "reviewer" ||
-                              agentPhase === "complete"
-                            ? "text-emerald-500"
-                            : "text-text-muted"
-                      }`}
-                    >
-                      {agentPhase === "translator"
-                        ? "progress_activity"
-                        : agentPhase === "reviewer" ||
-                            agentPhase === "complete"
-                          ? "check_circle"
-                          : "circle"}
-                    </span>
-                    <span
-                      className={`text-xs font-semibold ${
-                        agentPhase === "translator"
-                          ? "text-primary-dark"
-                          : agentPhase === "reviewer" ||
-                              agentPhase === "complete"
-                            ? "text-emerald-600"
-                            : "text-text-muted"
-                      }`}
-                    >
-                      Translator
-                    </span>
-                  </div>
-
-                  <span
-                    className={`material-symbols-outlined text-lg transition-colors duration-500 ${
-                      agentPhase === "reviewer" || agentPhase === "complete"
-                        ? "text-emerald-400"
-                        : "text-slate-300"
-                    }`}
-                  >
-                    arrow_forward
-                  </span>
-
-                  {/* Reviewer */}
-                  <div
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
-                      agentPhase === "reviewer"
-                        ? "border-primary bg-primary-light/60 shadow-sm"
-                        : agentPhase === "complete"
-                          ? "border-emerald-200 bg-emerald-50/60"
-                          : "border-border-subtle bg-slate-50"
-                    }`}
-                  >
-                    <span
-                      className={`material-symbols-outlined text-lg ${
-                        agentPhase === "reviewer"
-                          ? "text-primary animate-spin360"
-                          : agentPhase === "complete"
-                            ? "text-emerald-500"
-                            : "text-text-muted"
-                      }`}
-                    >
-                      {agentPhase === "reviewer"
-                        ? "progress_activity"
-                        : agentPhase === "complete"
-                          ? "check_circle"
-                          : "circle"}
-                    </span>
-                    <span
-                      className={`text-xs font-semibold ${
-                        agentPhase === "reviewer"
-                          ? "text-primary-dark"
-                          : agentPhase === "complete"
-                            ? "text-emerald-600"
-                            : "text-text-muted"
-                      }`}
-                    >
-                      Reviewer
-                    </span>
-                  </div>
-
-                  <span
-                    className={`material-symbols-outlined text-lg transition-colors duration-500 ${
-                      agentPhase === "complete"
-                        ? "text-emerald-400"
-                        : "text-slate-300"
-                    }`}
-                  >
-                    arrow_forward
-                  </span>
-
-                  {/* Complete */}
-                  <div
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
-                      agentPhase === "complete"
-                        ? "border-emerald-200 bg-emerald-50/60 shadow-sm"
-                        : "border-border-subtle bg-slate-50"
-                    }`}
-                  >
-                    <span
-                      className={`material-symbols-outlined text-lg ${
-                        agentPhase === "complete"
-                          ? "text-emerald-500"
-                          : "text-text-muted"
-                      }`}
-                    >
-                      {agentPhase === "complete" ? "check_circle" : "circle"}
-                    </span>
-                    <span
-                      className={`text-xs font-semibold ${
-                        agentPhase === "complete"
-                          ? "text-emerald-600"
-                          : "text-text-muted"
-                      }`}
-                    >
-                      Complete
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
 
-          {/* ═══ Review Header (review mode) ═══ */}
-          {showReviewHeader && (
+            {/* Review Title */}
             <div
-              className={`space-y-6 ${transition === "entering" ? "animate-section-fade-in" : ""}`}
+              className={`transition-opacity duration-400 ease-out ${
+                mode === "review"
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none absolute inset-0"
+              }`}
             >
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
@@ -464,64 +297,216 @@ export default function TranslationWorkspace() {
                   </a>
                 )}
               </div>
+            </div>
+          </div>
 
-              {/* Summary cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-lg text-primary">
-                      translate
-                    </span>
-                    <span className="text-xs font-medium text-text-muted">
-                      Total Strings
-                    </span>
+          {/* ═══ Progress Card (ALWAYS visible — never fades out) ═══ */}
+          <section className="rounded-xl border border-border-subtle bg-bg-surface p-6 shadow-soft animate-fade-slide-up">
+            <div className="flex items-center justify-between mb-3">
+              <span className={`text-sm font-medium text-text-muted ${!cardComplete ? "animate-breathe" : ""}`}>
+                {cardLabel}
+              </span>
+              <span
+                className={`text-2xl font-bold tabular-nums ${pctColor}`}
+              >
+                {animPct}%
+              </span>
+            </div>
+            <div className="relative w-full overflow-hidden rounded-full bg-slate-100 h-3.5">
+              <div
+                className={`absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out ${barColor} ${barShadow}`}
+                style={{ width: `${cardPercent}%` }}
+              />
+              {cardPercent > 0 && cardPercent < 100 && (
+                <div
+                  className="absolute inset-0 animate-shimmer"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)",
+                    width: `${cardPercent}%`,
+                  }}
+                />
+              )}
+              {cardComplete && (
+                <div
+                  className="absolute inset-0 animate-shimmer-once"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Grid-collapse: agent pipeline (translating) OR summary stats (review) */}
+            <div
+              className="grid transition-[grid-template-rows] duration-500 ease-out"
+              style={{ gridTemplateRows: (agentPhase !== "init" || mode === "review") ? "1fr" : "0fr" }}
+            >
+              <div className="overflow-hidden">
+                {mode === "review" ? (
+                  /* Summary stats */
+                  <div className="mt-4 pt-3 border-t border-border-subtle grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { icon: "translate", iconColor: "text-primary", label: "Total Strings", value: String(reviewResults.length), valueColor: "text-text-main", delay: 0 },
+                      { icon: "swap_horiz", iconColor: "text-emerald-500", label: "Changed", value: String(changedCount), valueColor: "text-emerald-600", delay: 80 },
+                      { icon: "horizontal_rule", iconColor: "text-slate-400", label: "Unchanged", value: String(unchangedCount), valueColor: "text-slate-400", delay: 160 },
+                      { icon: "paid", iconColor: "text-amber-500", label: "Est. Cost", value: `$${costSummary?.estimated_cost_usd?.toFixed(4) ?? "\u2014"}`, valueColor: "text-text-main", delay: 240 },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className={`rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft ${justEnteredReview ? "animate-row-fade-in" : ""}`}
+                        style={justEnteredReview ? { animationDelay: `${stat.delay}ms` } : undefined}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`material-symbols-outlined text-lg ${stat.iconColor}`}>
+                            {stat.icon}
+                          </span>
+                          <span className="text-xs font-medium text-text-muted">
+                            {stat.label}
+                          </span>
+                        </div>
+                        <span className={`text-2xl font-bold tabular-nums ${stat.valueColor}`}>
+                          {stat.value}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-2xl font-bold text-text-main tabular-nums">
-                    {reviewResults.length}
-                  </span>
-                </div>
-                <div className="rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-lg text-emerald-500">
-                      swap_horiz
+                ) : agentPhase !== "init" ? (
+                  /* Agent pipeline indicator */
+                  <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-center gap-3">
+                    {/* Translator */}
+                    <div
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
+                        agentPhase === "translator"
+                          ? "border-primary bg-primary-light/60 shadow-sm"
+                          : agentPhase === "reviewer" ||
+                              agentPhase === "complete"
+                            ? "border-emerald-200 bg-emerald-50/60"
+                            : "border-border-subtle bg-slate-50"
+                      }`}
+                    >
+                      <span
+                        className={`material-symbols-outlined text-lg ${
+                          agentPhase === "translator"
+                            ? "text-primary animate-spin360"
+                            : agentPhase === "reviewer" ||
+                                agentPhase === "complete"
+                              ? "text-emerald-500"
+                              : "text-text-muted"
+                        }`}
+                      >
+                        {agentPhase === "translator"
+                          ? "progress_activity"
+                          : agentPhase === "reviewer" ||
+                              agentPhase === "complete"
+                            ? "check_circle"
+                            : "circle"}
+                      </span>
+                      <span
+                        className={`text-xs font-semibold ${
+                          agentPhase === "translator"
+                            ? "text-primary-dark"
+                            : agentPhase === "reviewer" ||
+                                agentPhase === "complete"
+                              ? "text-emerald-600"
+                              : "text-text-muted"
+                        }`}
+                      >
+                        Translator
+                      </span>
+                    </div>
+
+                    <span
+                      className={`material-symbols-outlined text-lg transition-colors duration-500 ${
+                        agentPhase === "reviewer" || agentPhase === "complete"
+                          ? "text-emerald-400"
+                          : "text-slate-300"
+                      }`}
+                    >
+                      arrow_forward
                     </span>
-                    <span className="text-xs font-medium text-text-muted">
-                      Changed
+
+                    {/* Reviewer */}
+                    <div
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
+                        agentPhase === "reviewer"
+                          ? "border-primary bg-primary-light/60 shadow-sm"
+                          : agentPhase === "complete"
+                            ? "border-emerald-200 bg-emerald-50/60"
+                            : "border-border-subtle bg-slate-50"
+                      }`}
+                    >
+                      <span
+                        className={`material-symbols-outlined text-lg ${
+                          agentPhase === "reviewer"
+                            ? "text-primary animate-spin360"
+                            : agentPhase === "complete"
+                              ? "text-emerald-500"
+                              : "text-text-muted"
+                        }`}
+                      >
+                        {agentPhase === "reviewer"
+                          ? "progress_activity"
+                          : agentPhase === "complete"
+                            ? "check_circle"
+                            : "circle"}
+                      </span>
+                      <span
+                        className={`text-xs font-semibold ${
+                          agentPhase === "reviewer"
+                            ? "text-primary-dark"
+                            : agentPhase === "complete"
+                              ? "text-emerald-600"
+                              : "text-text-muted"
+                        }`}
+                      >
+                        Reviewer
+                      </span>
+                    </div>
+
+                    <span
+                      className={`material-symbols-outlined text-lg transition-colors duration-500 ${
+                        agentPhase === "complete"
+                          ? "text-emerald-400"
+                          : "text-slate-300"
+                      }`}
+                    >
+                      arrow_forward
                     </span>
+
+                    {/* Complete */}
+                    <div
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
+                        agentPhase === "complete"
+                          ? "border-emerald-200 bg-emerald-50/60 shadow-sm"
+                          : "border-border-subtle bg-slate-50"
+                      }`}
+                    >
+                      <span
+                        className={`material-symbols-outlined text-lg ${
+                          agentPhase === "complete"
+                            ? "text-emerald-500"
+                            : "text-text-muted"
+                        }`}
+                      >
+                        {agentPhase === "complete" ? "check_circle" : "circle"}
+                      </span>
+                      <span
+                        className={`text-xs font-semibold ${
+                          agentPhase === "complete"
+                            ? "text-emerald-600"
+                            : "text-text-muted"
+                        }`}
+                      >
+                        Complete
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-2xl font-bold text-emerald-600 tabular-nums">
-                    {changedCount}
-                  </span>
-                </div>
-                <div className="rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-lg text-slate-400">
-                      horizontal_rule
-                    </span>
-                    <span className="text-xs font-medium text-text-muted">
-                      Unchanged
-                    </span>
-                  </div>
-                  <span className="text-2xl font-bold text-slate-400 tabular-nums">
-                    {unchangedCount}
-                  </span>
-                </div>
-                <div className="rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-lg text-amber-500">
-                      paid
-                    </span>
-                    <span className="text-xs font-medium text-text-muted">
-                      Est. Cost
-                    </span>
-                  </div>
-                  <span className="text-2xl font-bold text-text-main tabular-nums">
-                    ${costSummary?.estimated_cost_usd?.toFixed(4) ?? "\u2014"}
-                  </span>
-                </div>
+                ) : null}
               </div>
             </div>
-          )}
+          </section>
 
           {/* ═══ Error Banner ═══ */}
           {error && (
@@ -676,7 +661,7 @@ export default function TranslationWorkspace() {
 
                 {/* Rows */}
                 <div className="overflow-y-auto custom-scrollbar flex-1 bg-white min-h-[400px]">
-                  {pageRows.map((row) => {
+                  {pageRows.map((row, idx) => {
                     const rowKey = `${row.key}_${row.lang}`;
                     const isUnchanged = row.isDone && !row.hasChange;
 
@@ -689,12 +674,16 @@ export default function TranslationWorkspace() {
                       }
                     }
 
+                    // Review mode stagger animation
+                    const reviewStagger = mode === "review" && justEnteredReview;
+
                     return (
                       <div
                         key={rowKey}
                         className={`grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-all duration-200 group ${
                           isUnchanged ? "opacity-45 hover:opacity-100" : ""
-                        } ${showRowAnim ? "animate-row-fade-in" : ""}`}
+                        } ${showRowAnim || reviewStagger ? "animate-row-fade-in" : ""}`}
+                        style={reviewStagger ? { animationDelay: `${idx * 40}ms` } : undefined}
                       >
                         {/* AI Note */}
                         <div className="col-span-1 relative">
