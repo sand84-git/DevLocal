@@ -38,6 +38,9 @@ export default function StepIndicator({
         {STEPS.map((step, i) => {
           const isCompleted = i < activeIdx;
           const isCurrent = i === activeIdx;
+          const isProcessing =
+            isCurrent &&
+            (currentStep === "loading" || currentStep === "translating");
           const isLast = i === STEPS.length - 1;
 
           return (
@@ -57,14 +60,14 @@ export default function StepIndicator({
 
                 {/* Step circle */}
                 {isCompleted ? (
-                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white z-10 mx-auto">
+                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white z-10 mx-auto animate-bounce-in">
                     <span className="material-symbols-outlined text-lg">
                       check
                     </span>
                   </span>
                 ) : isCurrent ? (
                   <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border-2 border-primary text-primary z-10 mx-auto shadow-sm shadow-primary/20">
-                    <span className="material-symbols-outlined text-lg">
+                    <span className={`material-symbols-outlined text-lg ${isProcessing ? "animate-spin-360" : ""}`}>
                       {step.icon}
                     </span>
                   </span>

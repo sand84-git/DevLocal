@@ -102,6 +102,39 @@ export interface FinalReviewReadyData {
   cost: { input_tokens: number; output_tokens: number };
 }
 
+/* ── Chunk Streaming Types ── */
+export interface OriginalRow {
+  key: string;
+  korean: string;
+}
+
+export interface ChunkProgress {
+  done: number;
+  total: number;
+  lang?: string;
+}
+
+export interface TranslationChunkItem {
+  key: string;
+  lang: string;
+  translated: string;
+}
+
+export interface KoReviewChunkData {
+  chunk_results: KoReviewItem[];
+  progress: ChunkProgress;
+}
+
+export interface TranslationChunkData {
+  chunk_results: TranslationChunkItem[];
+  progress: ChunkProgress;
+}
+
+export interface ReviewChunkData {
+  chunk_results: ReviewItem[];
+  progress: ChunkProgress;
+}
+
 /* ── Config ── */
 export interface AppConfig {
   saved_url?: string;

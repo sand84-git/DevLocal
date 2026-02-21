@@ -2,6 +2,7 @@
 
 import json
 import litellm
+from langchain_core.runnables import RunnableConfig
 from backend.config import get_xai_api_key
 from agents.state import LocalizationState
 from agents.prompts import build_translator_prompt
@@ -152,7 +153,7 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
     }
 
 
-def translator_node(state: LocalizationState) -> dict:
+def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
     """
     청크 단위 번역 수행.
     _needs_retry가 있으면 해당 항목만 재번역 (retry 모드).
@@ -160,6 +161,9 @@ def translator_node(state: LocalizationState) -> dict:
       모드 A: 전체 행 번역
       모드 B: 타겟 언어 빈칸인 행만 번역
     """
+    # 청크별 이벤트 emitter (없으면 무시)
+    emitter = config.get("configurable", {}).get("event_emitter") if config else None
+
     # 재시도 모드 확인
     needs_retry = state.get("_needs_retry", [])
     if needs_retry:
@@ -260,6 +264,7 @@ def translator_node(state: LocalizationState) -> dict:
 
                 translated_items = json.loads(content)
 
+                chunk_results = []
                 for item in translated_items:
                     translated_text = item.get("translated", "")
                     # Fix: LLM이 JSON에서 \n을 실제 개행으로 출력하는 문제 보정
@@ -267,10 +272,23 @@ def translator_node(state: LocalizationState) -> dict:
                     # 게임 텍스트의 literal \n 태그를 복원
                     translated_text = translated_text.replace('\n', '\\n')
                     translated_text = translated_text.replace('\t', '\\t')
-                    all_results.append({
+                    result_item = {
                         "key": item["key"],
                         "lang": lang,
                         "translated": translated_text,
+                    }
+                    all_results.append(result_item)
+                    chunk_results.append(result_item)
+
+                # 청크별 부분 결과를 프론트엔드에 전송
+                if emitter and chunk_results:
+                    emitter("translation_chunk", {
+                        "chunk_results": chunk_results,
+                        "progress": {
+                            "done": len(all_results),
+                            "total": len(target_rows) * len(target_languages),
+                            "lang": lang,
+                        },
                     })
 
             except Exception as e:

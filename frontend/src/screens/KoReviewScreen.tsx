@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { approveKo, getDownloadUrl } from "../api/client";
+import { highlightDiff } from "../utils/diffHighlight";
+import { STAGGER, staggerDelay } from "../utils/stagger";
 import ProgressSection from "../components/ProgressSection";
 import Footer from "../components/Footer";
 
@@ -50,7 +52,7 @@ export default function KoReviewScreen() {
       <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32">
         <div className="mx-auto max-w-6xl space-y-6">
           {/* Title row */}
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${STAGGER}`} style={staggerDelay(0)}>
             <div>
               <h1 className="text-2xl font-bold text-text-main">
                 Korean Language Review
@@ -74,21 +76,23 @@ export default function KoReviewScreen() {
           </div>
 
           {/* Progress */}
-          <ProgressSection
-            title="Korean Review Progress"
-            total={koReviewResults.length}
-            percent={
-              totalIssues > 0
-                ? Math.round((decidedCount / totalIssues) * 100)
-                : 100
-            }
-            done={decidedCount}
-            pending={Math.max(0, totalIssues - decidedCount)}
-            errors={0}
-          />
+          <div className={STAGGER} style={staggerDelay(1)}>
+            <ProgressSection
+              title="Korean Review Progress"
+              total={koReviewResults.length}
+              percent={
+                totalIssues > 0
+                  ? Math.round((decidedCount / totalIssues) * 100)
+                  : 100
+              }
+              done={decidedCount}
+              pending={Math.max(0, totalIssues - decidedCount)}
+              errors={0}
+            />
+          </div>
 
           {/* Table section */}
-          <section className="flex flex-col rounded-xl border border-border-subtle bg-bg-surface shadow-soft overflow-hidden">
+          <section className={`flex flex-col rounded-xl border border-border-subtle bg-bg-surface shadow-soft overflow-hidden ${STAGGER}`} style={staggerDelay(2)}>
             {/* Table header */}
             <div className="border-b border-border-subtle bg-slate-50/50 p-6">
               <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -153,13 +157,17 @@ export default function KoReviewScreen() {
                     const decision = koDecisions[item.key];
                     const isResolved = decision === "accepted";
 
+                    const noIssue = !item.has_issue;
+
                     return (
                       <tr
                         key={item.key}
-                        className={`group transition-colors ${
+                        className={`group transition-all duration-200 ${
                           isResolved
                             ? "bg-emerald-50/40"
-                            : "hover:bg-slate-50"
+                            : noIssue
+                              ? "opacity-45 hover:opacity-100"
+                              : "hover:bg-slate-50"
                         }`}
                       >
                         {/* AI Comment */}
@@ -195,11 +203,17 @@ export default function KoReviewScreen() {
                           {item.original}
                         </td>
 
-                        {/* Suggested Fix */}
+                        {/* Suggested Fix — diff highlight */}
                         <td className="px-6 py-4">
-                          <span className="text-primary-dark font-medium">
-                            {item.revised}
-                          </span>
+                          {item.has_issue ? (
+                            <span className="text-primary-dark font-medium">
+                              {highlightDiff(item.original, item.revised)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-xs">
+                              No changes
+                            </span>
+                          )}
                         </td>
 
                         {/* Action */}

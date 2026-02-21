@@ -5,6 +5,9 @@ import type {
   ReviewItem,
   FailedRow,
   CostSummary,
+  OriginalRow,
+  TranslationChunkItem,
+  ChunkProgress,
 } from "../types";
 
 interface AppState {
@@ -19,6 +22,7 @@ interface AppState {
   /* ── Session ── */
   sessionId: string | null;
   currentStep: AppStep;
+  previousStep: AppStep | null;
 
   /* ── KR Review (HITL 1) ── */
   koReviewResults: KoReviewItem[];
@@ -30,6 +34,13 @@ interface AppState {
   failedRows: FailedRow[];
   selectedLang: string;
   reviewPage: number;
+
+  /* ── Chunk Streaming (실시간 진행) ── */
+  originalRows: OriginalRow[];
+  partialKoResults: KoReviewItem[];
+  partialTranslations: TranslationChunkItem[];
+  partialReviews: ReviewItem[];
+  chunkProgress: ChunkProgress | null;
 
   /* ── Metrics ── */
   costSummary: CostSummary | null;
@@ -60,6 +71,11 @@ interface AppState {
   setFailedRows: (rows: FailedRow[]) => void;
   setSelectedLang: (lang: string) => void;
   setReviewPage: (page: number) => void;
+  setOriginalRows: (rows: OriginalRow[]) => void;
+  appendPartialKoResults: (results: KoReviewItem[]) => void;
+  appendPartialTranslations: (results: TranslationChunkItem[]) => void;
+  appendPartialReviews: (results: ReviewItem[]) => void;
+  setChunkProgress: (progress: ChunkProgress | null) => void;
   setCostSummary: (cost: CostSummary | null) => void;
   setTotalRows: (n: number) => void;
   setCellsUpdated: (n: number) => void;
@@ -72,24 +88,30 @@ interface AppState {
 
 const initialState = {
   sheetUrl: "",
-  sheetNames: [],
+  sheetNames: [] as string[],
   botEmail: "",
   selectedSheet: "",
   mode: "A" as const,
   rowLimit: 0,
-  sessionId: null,
+  sessionId: null as string | null,
   currentStep: "idle" as AppStep,
-  koReviewResults: [],
-  koDecisions: {},
-  reviewResults: [],
-  reviewDecisions: {},
-  failedRows: [],
+  previousStep: null as AppStep | null,
+  koReviewResults: [] as KoReviewItem[],
+  koDecisions: {} as Record<string, "accepted" | "rejected">,
+  reviewResults: [] as ReviewItem[],
+  reviewDecisions: {} as Record<string, "accepted" | "rejected">,
+  failedRows: [] as FailedRow[],
   selectedLang: "en",
   reviewPage: 1,
-  costSummary: null,
+  originalRows: [] as OriginalRow[],
+  partialKoResults: [] as KoReviewItem[],
+  partialTranslations: [] as TranslationChunkItem[],
+  partialReviews: [] as ReviewItem[],
+  chunkProgress: null as ChunkProgress | null,
+  costSummary: null as CostSummary | null,
   totalRows: 0,
   cellsUpdated: 0,
-  logs: [],
+  logs: [] as string[],
   progressPercent: 0,
   progressLabel: "",
   translationsApplied: false,
@@ -105,7 +127,8 @@ export const useAppStore = create<AppState>((set) => ({
   setMode: (mode) => set({ mode }),
   setRowLimit: (limit) => set({ rowLimit: limit }),
   setSessionId: (id) => set({ sessionId: id }),
-  setCurrentStep: (step) => set({ currentStep: step }),
+  setCurrentStep: (step) =>
+    set((s) => ({ currentStep: step, previousStep: s.currentStep })),
   setKoReviewResults: (results) => set({ koReviewResults: results }),
   setKoDecision: (key, decision) =>
     set((s) => ({ koDecisions: { ...s.koDecisions, [key]: decision } })),
@@ -117,6 +140,14 @@ export const useAppStore = create<AppState>((set) => ({
   setFailedRows: (rows) => set({ failedRows: rows }),
   setSelectedLang: (lang) => set({ selectedLang: lang }),
   setReviewPage: (page) => set({ reviewPage: page }),
+  setOriginalRows: (rows) => set({ originalRows: rows }),
+  appendPartialKoResults: (results) =>
+    set((s) => ({ partialKoResults: [...s.partialKoResults, ...results] })),
+  appendPartialTranslations: (results) =>
+    set((s) => ({ partialTranslations: [...s.partialTranslations, ...results] })),
+  appendPartialReviews: (results) =>
+    set((s) => ({ partialReviews: [...s.partialReviews, ...results] })),
+  setChunkProgress: (progress) => set({ chunkProgress: progress }),
   setCostSummary: (cost) => set({ costSummary: cost }),
   setTotalRows: (n) => set({ totalRows: n }),
   setCellsUpdated: (n) => set({ cellsUpdated: n }),

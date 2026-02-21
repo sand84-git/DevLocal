@@ -1,3 +1,5 @@
+import { useCountUp } from "../hooks/useCountUp";
+
 interface ProgressSectionProps {
   title: string;
   total: number;
@@ -15,6 +17,19 @@ export default function ProgressSection({
   pending,
   errors,
 }: ProgressSectionProps) {
+  const isComplete = percent >= 100;
+
+  const animPct = useCountUp(percent, 500);
+  const animDone = useCountUp(done, 400);
+  const animPending = useCountUp(pending, 400);
+  const animErrors = useCountUp(errors, 400);
+
+  const barColor = isComplete ? "bg-emerald-500" : "bg-primary";
+  const barShadow = isComplete
+    ? "shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+    : "shadow-[0_0_12px_rgba(14,165,233,0.3)]";
+  const pctColor = isComplete ? "text-emerald-500" : "text-primary";
+
   return (
     <section className="rounded-xl border border-border-subtle bg-bg-surface p-6 shadow-soft">
       <div className="flex items-center justify-between w-full">
@@ -27,13 +42,36 @@ export default function ProgressSection({
                 {total.toLocaleString()} strings total
               </span>
             </div>
-            <span className="text-3xl font-bold text-primary">{percent}%</span>
+            <span className={`text-3xl font-bold tabular-nums ${pctColor}`}>
+              {animPct}%
+            </span>
           </div>
           <div className="relative w-full overflow-hidden rounded-full bg-slate-100 h-4">
             <div
-              className="absolute top-0 left-0 h-full bg-primary rounded-full transition-all duration-500"
+              className={`absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out ${barColor} ${barShadow}`}
               style={{ width: `${percent}%` }}
             />
+            {/* Shimmer overlay */}
+            {percent > 0 && percent < 100 && (
+              <div
+                className="absolute inset-0 animate-shimmer"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)",
+                  width: `${percent}%`,
+                }}
+              />
+            )}
+            {/* Single shimmer on completion */}
+            {isComplete && (
+              <div
+                className="absolute inset-0 animate-shimmer-once"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)",
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -43,8 +81,8 @@ export default function ProgressSection({
         {/* Right: Stats */}
         <div className="flex items-center gap-12 pl-12 shrink-0">
           <div className="flex flex-col items-start">
-            <span className="text-2xl font-bold text-text-main">
-              {done.toLocaleString()}
+            <span className="text-2xl font-bold text-text-main tabular-nums">
+              {animDone.toLocaleString()}
             </span>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -54,8 +92,8 @@ export default function ProgressSection({
             </div>
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-2xl font-bold text-amber-500">
-              {pending.toLocaleString()}
+            <span className="text-2xl font-bold text-amber-500 tabular-nums">
+              {animPending.toLocaleString()}
             </span>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
@@ -65,8 +103,8 @@ export default function ProgressSection({
             </div>
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-2xl font-bold text-rose-500">
-              {errors.toLocaleString()}
+            <span className="text-2xl font-bold text-rose-500 tabular-nums">
+              {animErrors.toLocaleString()}
             </span>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="w-2 h-2 rounded-full bg-rose-500" />

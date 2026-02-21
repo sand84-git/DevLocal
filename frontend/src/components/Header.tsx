@@ -28,7 +28,7 @@ export default function Header() {
       <div className="min-w-[240px] flex justify-end">
         {currentStep !== "idle" && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-border-subtle">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-dot-pulse" />
             <span className="text-xs font-medium text-text-muted">
               Connected
             </span>
