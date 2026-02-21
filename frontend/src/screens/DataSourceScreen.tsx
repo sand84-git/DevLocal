@@ -56,6 +56,8 @@ export default function DataSourceScreen() {
     if (!selectedSheet) return;
     setLoading(true);
     setError("");
+    // 낙관적 전환 — API 응답 전에 즉시 loading 화면으로 이동
+    setCurrentStep("loading");
     try {
       const res = await startPipeline({
         sheet_url: sheetUrl,
@@ -65,8 +67,9 @@ export default function DataSourceScreen() {
         row_limit: rowEnd > 0 ? rowEnd - rowStart : 0,
       });
       setSessionId(res.session_id);
-      setCurrentStep("loading");
     } catch (e) {
+      // 실패 시 idle로 복귀
+      setCurrentStep("idle");
       setError(e instanceof Error ? e.message : "Failed to start");
     } finally {
       setLoading(false);
@@ -133,12 +136,34 @@ export default function DataSourceScreen() {
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-text-muted flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">
-                    info
-                  </span>
-                  Make sure the sheet is shared with the service account.
-                </p>
+                <div className="flex items-center gap-2 text-xs mt-2">
+                  {connecting ? (
+                    <>
+                      <span className="material-symbols-outlined text-sm text-primary animate-spin360">
+                        progress_activity
+                      </span>
+                      <span className="text-primary font-medium">Connecting...</span>
+                    </>
+                  ) : sheetNames.length > 0 ? (
+                    <>
+                      <span className="material-symbols-outlined text-sm text-emerald-500">
+                        check_circle
+                      </span>
+                      <span className="text-emerald-600 font-medium">
+                        Connected — {sheetNames.length} tab{sheetNames.length > 1 ? "s" : ""} found
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm text-text-muted">
+                        info
+                      </span>
+                      <span className="text-text-muted">
+                        Make sure the sheet is shared with the service account.
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Sheet Tab + Row Range */}

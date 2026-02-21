@@ -13,6 +13,7 @@ from agents.prompts import build_ko_proofreader_prompt
 from agents.nodes.data_backup import data_backup_node
 from agents.nodes.context_glossary import context_glossary_node
 from agents.nodes.translator import translator_node
+from utils.drip_feed import drip_feed_emit
 from agents.nodes.reviewer import reviewer_node
 from agents.nodes.writer import writer_node
 from backend.config import get_xai_api_key
@@ -80,15 +81,22 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
                 content = content.split("\n", 1)[-1].rsplit("```", 1)[0]
 
             items = json.loads(content)
+            # LLM 필드 변환: changes → comment, has_issue 추가
+            for item in items:
+                item["comment"] = item.pop("changes", "")
+                item["has_issue"] = item.get("original", "") != item.get("revised", "")
             ko_review_results.extend(items)
 
-            # 청크별 부분 결과를 프론트엔드에 전송
+            # 청크별 부분 결과를 1행씩 drip-feed 전송
             processed_count += len(chunk)
             if emitter:
-                emitter("ko_review_chunk", {
-                    "chunk_results": items,
-                    "progress": {"done": processed_count, "total": total_ko_rows},
-                })
+                drip_feed_emit(
+                    emitter,
+                    "ko_review_chunk",
+                    items,
+                    progress_base=processed_count - len(items),
+                    total=total_ko_rows,
+                )
 
         except Exception as e:
             processed_count += len(chunk)

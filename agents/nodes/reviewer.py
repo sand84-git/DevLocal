@@ -13,6 +13,7 @@ from config.constants import (
     REQUIRED_COLUMNS,
     SUPPORTED_LANGUAGES,
 )
+from utils.drip_feed import drip_feed_emit
 from config.glossary import GLOSSARY
 from utils.validation import (
     apply_glossary_postprocess,
@@ -258,15 +259,15 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
 
     all_review_results = prev_review_results + new_review_results
 
-    # 검수 완료 결과를 프론트엔드에 전송
+    # 검수 완료 결과를 1행씩 drip-feed 전송
     if emitter and new_review_results:
-        emitter("review_chunk", {
-            "chunk_results": new_review_results,
-            "progress": {
-                "done": len(all_review_results),
-                "total": len(all_review_results) + len(needs_retry_items),
-            },
-        })
+        drip_feed_emit(
+            emitter,
+            "review_chunk",
+            new_review_results,
+            progress_base=len(prev_review_results),
+            total=len(all_review_results) + len(needs_retry_items),
+        )
 
     logs.append(
         f"[Node 4] 검수 완료: 누적 통과 {len(all_review_results)}건, "

@@ -128,7 +128,19 @@ export const useAppStore = create<AppState>((set) => ({
   setRowLimit: (limit) => set({ rowLimit: limit }),
   setSessionId: (id) => set({ sessionId: id }),
   setCurrentStep: (step) =>
-    set((s) => ({ currentStep: step, previousStep: s.currentStep })),
+    set((s) => ({
+      currentStep: step,
+      previousStep: s.currentStep,
+      // translating 진입 시 progress 리셋 + 스트리밍 데이터 초기화
+      ...(step === "translating"
+        ? {
+            progressPercent: 0,
+            progressLabel: "Starting translation...",
+            partialTranslations: [],
+            partialReviews: [],
+          }
+        : {}),
+    })),
   setKoReviewResults: (results) => set({ koReviewResults: results }),
   setKoDecision: (key, decision) =>
     set((s) => ({ koDecisions: { ...s.koDecisions, [key]: decision } })),

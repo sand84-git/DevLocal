@@ -13,6 +13,7 @@ from config.constants import (
     Status,
     SUPPORTED_LANGUAGES,
 )
+from utils.drip_feed import drip_feed_emit
 from config.glossary import GLOSSARY
 
 
@@ -280,16 +281,16 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
                     all_results.append(result_item)
                     chunk_results.append(result_item)
 
-                # 청크별 부분 결과를 프론트엔드에 전송
+                # 청크별 부분 결과를 1행씩 drip-feed 전송
                 if emitter and chunk_results:
-                    emitter("translation_chunk", {
-                        "chunk_results": chunk_results,
-                        "progress": {
-                            "done": len(all_results),
-                            "total": len(target_rows) * len(target_languages),
-                            "lang": lang,
-                        },
-                    })
+                    drip_feed_emit(
+                        emitter,
+                        "translation_chunk",
+                        chunk_results,
+                        progress_base=len(all_results) - len(chunk_results),
+                        total=len(target_rows) * len(target_languages),
+                        lang=lang,
+                    )
 
             except Exception as e:
                 logs.append(f"[Node 3] 번역 오류 (청크 {chunk_idx + 1}): {e}")

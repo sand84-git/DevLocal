@@ -164,6 +164,33 @@
   animation: spin360 1s linear infinite;
 }
 
+/* ── Row Fade-in (drip-feed 행 등장) ── */
+@keyframes rowFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-row-fade-in {
+  animation: rowFadeIn 300ms ease-out forwards;
+}
+
+/* ── Section Fade-out (progress bar 퇴장) ── */
+@keyframes sectionFadeOut {
+  from { opacity: 1; max-height: 300px; }
+  to { opacity: 0; max-height: 0; overflow: hidden; }
+}
+.animate-section-fade-out {
+  animation: sectionFadeOut 400ms ease-out forwards;
+}
+
+/* ── Section Fade-in (review header 등장) ── */
+@keyframes sectionFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-section-fade-in {
+  animation: sectionFadeIn 400ms ease-out both;
+}
+
 /* ── Tabular Nums (카운트업용) ── */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

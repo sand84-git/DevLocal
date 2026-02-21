@@ -30,21 +30,36 @@ export function useSSE() {
     /* ── 노드 수준 업데이트 ── */
     es.addEventListener("node_update", (e) => {
       const data: NodeUpdateData = JSON.parse(e.data);
-      const { setLogs, setProgress } = store();
-      setLogs(data.logs);
+      const s = store();
+      s.setLogs(data.logs);
 
-      // 노드별 프로그레스 매핑 (loading phase + translating phase)
-      const progressMap: Record<string, [number, string]> = {
-        data_backup: [10, "Backing up data..."],
-        context_glossary: [25, "Preparing glossary & context..."],
-        ko_review: [50, "Reviewing Korean text..."],
-        translator: [40, "Translating..."],
-        reviewer: [70, "Reviewing translations..."],
-        should_retry: [85, "Retrying failed translations..."],
-      };
-      const progress = progressMap[data.node];
-      if (progress) {
-        setProgress(progress[0], progress[1]);
+      if (data.step === "loading") {
+        // Loading phase — 고정 진행률
+        const loadingMap: Record<string, [number, string]> = {
+          data_backup: [10, "Backing up data..."],
+          context_glossary: [25, "Preparing glossary & context..."],
+          ko_review: [50, "Reviewing Korean text..."],
+        };
+        const p = loadingMap[data.node];
+        if (p) s.setProgress(p[0], p[1]);
+      } else if (data.step === "translating") {
+        // Translating phase — 라벨만 업데이트 (진행률은 chunk 이벤트가 담당)
+        const labelMap: Record<string, string> = {
+          translator: "Translator Agent working...",
+          reviewer: "Reviewer Agent checking quality...",
+          should_retry: "Retrying failed translations...",
+        };
+        const label = labelMap[data.node];
+        if (label) {
+          // reviewer 시작 시 최소 60% 보장 (translator 완료 의미)
+          if (data.node === "reviewer") {
+            s.setProgress(Math.max(s.progressPercent, 60), label);
+          } else if (data.node === "should_retry") {
+            s.setProgress(Math.max(s.progressPercent, 85), label);
+          } else {
+            s.setProgress(s.progressPercent, label);
+          }
+        }
       }
     });
 
@@ -69,38 +84,45 @@ export function useSSE() {
       );
     });
 
-    /* ── 번역 — 청크별 부분 결과 ── */
+    /* ── 번역 — 청크별 부분 결과 (전체의 0% → 60%) ── */
     es.addEventListener("translation_chunk", (e) => {
       const data: TranslationChunkData = JSON.parse(e.data);
       const s = store();
       s.appendPartialTranslations(data.chunk_results);
       s.setChunkProgress(data.progress);
-      const pct = Math.round(
-        (data.progress.done / data.progress.total) * 100,
-      );
+      const rawPct = data.progress.done / data.progress.total;
+      const scaledPct = Math.round(rawPct * 60); // 0-60% 범위
       const lang = data.progress.lang?.toUpperCase() ?? "";
       s.setProgress(
-        pct,
-        `Translating ${lang}... (${data.progress.done}/${data.progress.total})`,
+        scaledPct,
+        `Translator Agent — ${lang} (${data.progress.done}/${data.progress.total})`,
       );
     });
 
-    /* ── 검수 — 청크별 부분 결과 ── */
+    /* ── 검수 — 청크별 부분 결과 (전체의 60% → 95%) ── */
     es.addEventListener("review_chunk", (e) => {
       const data: ReviewChunkData = JSON.parse(e.data);
       const s = store();
       s.appendPartialReviews(data.chunk_results);
       s.setChunkProgress(data.progress);
+      const rawPct = data.progress.total > 0
+        ? data.progress.done / data.progress.total
+        : 0;
+      const scaledPct = 60 + Math.round(rawPct * 35); // 60-95% 범위
+      s.setProgress(
+        scaledPct,
+        `Reviewer Agent — checking (${data.progress.done}/${data.progress.total})`,
+      );
     });
 
-    /* ── 한국어 검수 완료 → 600ms dwell 후 화면 전환 ── */
+    /* ── 한국어 검수 완료 → 항상 리뷰 화면 표시 (0건이어도 컨펌 필요) ── */
     es.addEventListener("ko_review_ready", (e) => {
       const data: KoReviewReadyData = JSON.parse(e.data);
       const s = store();
       s.setKoReviewResults(data.results);
       s.setTotalRows(data.count);
       s.setProgress(100, "Korean review complete");
-      setTimeout(() => s.setCurrentStep("ko_review"), 600);
+      setTimeout(() => s.setCurrentStep("ko_review"), 1500);
     });
 
     /* ── 번역 검수 완료 → 600ms dwell 후 화면 전환 ── */

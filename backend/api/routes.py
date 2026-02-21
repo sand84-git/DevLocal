@@ -230,10 +230,28 @@ def _run_initial_phase(session):
         session.logs = result.get("logs", [])
         session.current_step = "ko_review"
 
+        # 전체 행 포함 ko_review_results 구성 (LLM은 변경 행만 반환하므로 나머지 보충)
+        ko_results_raw = result.get("ko_review_results", [])
+        ko_result_map = {r["key"]: r for r in ko_results_raw}
+        original_data = result.get("original_data", [])
+        ko_results = []
+        for row in original_data:
+            key = row.get(REQUIRED_COLUMNS["key"], "")
+            ko_text = row.get(REQUIRED_COLUMNS["korean"], "")
+            if key in ko_result_map:
+                ko_results.append(ko_result_map[key])
+            else:
+                ko_results.append({
+                    "key": key,
+                    "original": ko_text,
+                    "revised": ko_text,
+                    "comment": "",
+                    "has_issue": False,
+                })
+
         # KR diff 리포트 생성
-        ko_results = result.get("ko_review_results", [])
         ko_report_data = None
-        if ko_results and session.df is not None:
+        if ko_results_raw and session.df is not None:
             original_rows = [
                 {"Key": r.get(REQUIRED_COLUMNS["key"], ""),
                  "Korean(ko)": r.get(REQUIRED_COLUMNS["korean"], "")}
