@@ -646,17 +646,22 @@ export default function TranslationWorkspace() {
                   </div>
                 </div>
 
-                {/* Completion banner (translating, 100%) */}
-                {mode === "translating" && isComplete && (
-                  <div className="flex items-center gap-3 px-5 py-3 bg-emerald-50 border-b border-emerald-200 animate-fade-slide-down">
-                    <span className="material-symbols-outlined text-emerald-600 animate-bounce-in">
-                      check_circle
-                    </span>
-                    <span className="text-sm font-semibold text-emerald-700">
-                      Translation complete — moving to review
-                    </span>
+                {/* Completion banner (translating, 100%) — grid-collapse for smooth height */}
+                <div
+                  className="grid transition-[grid-template-rows] duration-300 ease-out"
+                  style={{ gridTemplateRows: mode === "translating" && isComplete ? "1fr" : "0fr" }}
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-3 px-5 py-3 bg-emerald-50 border-b border-emerald-200 animate-fade-slide-down">
+                      <span className="material-symbols-outlined text-emerald-600 animate-bounce-in">
+                        check_circle
+                      </span>
+                      <span className="text-sm font-semibold text-emerald-700">
+                        Translation complete — moving to review
+                      </span>
+                    </div>
                   </div>
-                )}
+                </div>
 
                 {/* Grid header */}
                 <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-surface-pale border-b border-border-subtle text-xs font-bold text-text-muted uppercase tracking-wider sticky top-0 z-10">

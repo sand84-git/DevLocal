@@ -144,24 +144,33 @@ export default function KoReviewWorkspace() {
     <>
       <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32">
         <div className="mx-auto max-w-5xl space-y-6">
-          {/* ═══ Loading Title (fades out during transition) ═══ */}
-          {showLoadingTitle && (
+          {/* ═══ Title Area — cross-fade (no height collapse) ═══ */}
+          <div className="relative min-h-[72px]">
+            {/* Loading Title */}
             <div
-              className={`text-center ${transition === "exiting" ? "animate-section-fade-out" : "animate-fade-in"}`}
+              className={`transition-opacity duration-400 ease-out ${
+                showLoadingTitle
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none absolute inset-0"
+              }`}
             >
-              <h1 className="text-2xl font-bold text-text-main">
-                Loading & Analyzing...
-              </h1>
-              <p className="mt-2 text-sm text-text-muted">
-                Backing up data, building glossary, and reviewing Korean text.
-              </p>
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-text-main">
+                  Loading & Analyzing...
+                </h1>
+                <p className="mt-2 text-sm text-text-muted">
+                  Backing up data, building glossary, and reviewing Korean text.
+                </p>
+              </div>
             </div>
-          )}
 
-          {/* ═══ Review Title (fades in during transition) ═══ */}
-          {showReviewTitle && (
+            {/* Review Title */}
             <div
-              className={transition === "entering" ? "animate-section-fade-in" : ""}
+              className={`transition-opacity duration-400 ease-out ${
+                showReviewTitle
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none absolute inset-0"
+              }`}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -191,7 +200,7 @@ export default function KoReviewWorkspace() {
                 )}
               </div>
             </div>
-          )}
+          </div>
 
           {/* ═══ Progress Card (ALWAYS visible — never fades out) ═══ */}
           <section className="rounded-xl border border-border-subtle bg-bg-surface p-6 shadow-soft animate-fade-slide-up">
@@ -231,56 +240,60 @@ export default function KoReviewWorkspace() {
               )}
             </div>
 
-            {/* Completion banner (loading mode, 100%) */}
-            {mode === "loading" && isComplete && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-emerald-600 font-semibold animate-fade-slide-down">
-                <span className="material-symbols-outlined animate-bounce-in">
-                  check_circle
-                </span>
-                Korean review complete — {partialKoResults.length} suggestions
-                found
+            {/* Unified collapsible: completion banner OR stats — single grid-collapse to avoid jitter */}
+            <div
+              className="grid transition-[grid-template-rows] duration-500 ease-out"
+              style={{ gridTemplateRows: (isComplete || showStats) ? "1fr" : "0fr" }}
+            >
+              <div className="overflow-hidden">
+                {showStats ? (
+                  <div
+                    className={`mt-4 pt-3 border-t border-border-subtle flex items-center gap-6 ${transition === "entering" ? "animate-section-fade-in" : ""}`}
+                    style={
+                      transition === "entering"
+                        ? { animationDelay: "200ms" }
+                        : undefined
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                        Done
+                      </span>
+                      <span className="text-sm font-bold text-text-main tabular-nums">
+                        {decidedCount}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                        Pending
+                      </span>
+                      <span className="text-sm font-bold text-text-main tabular-nums">
+                        {Math.max(0, totalIssues - decidedCount)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-red-500" />
+                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                        Errors
+                      </span>
+                      <span className="text-sm font-bold text-text-main tabular-nums">
+                        0
+                      </span>
+                    </div>
+                  </div>
+                ) : isComplete ? (
+                  <div className="mt-4 pt-3 flex items-center gap-2 text-sm text-emerald-600 font-semibold animate-fade-slide-down">
+                    <span className="material-symbols-outlined animate-bounce-in">
+                      check_circle
+                    </span>
+                    Korean review complete — {partialKoResults.length} suggestions
+                    found
+                  </div>
+                ) : null}
               </div>
-            )}
-
-            {/* Stats area (review mode only — fade-in) */}
-            {showStats && (
-              <div
-                className={`mt-4 pt-4 border-t border-border-subtle flex items-center gap-6 ${transition === "entering" ? "animate-section-fade-in" : ""}`}
-                style={
-                  transition === "entering"
-                    ? { animationDelay: "200ms" }
-                    : undefined
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                    Done
-                  </span>
-                  <span className="text-sm font-bold text-text-main tabular-nums">
-                    {decidedCount}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-amber-500" />
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                    Pending
-                  </span>
-                  <span className="text-sm font-bold text-text-main tabular-nums">
-                    {Math.max(0, totalIssues - decidedCount)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-red-500" />
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                    Errors
-                  </span>
-                  <span className="text-sm font-bold text-text-main tabular-nums">
-                    0
-                  </span>
-                </div>
-              </div>
-            )}
+            </div>
           </section>
 
           {/* ═══ Data Table ═══ */}
@@ -333,19 +346,6 @@ export default function KoReviewWorkspace() {
                       Filter: Issues Only
                     </button>
                   </div>
-                </div>
-              )}
-
-              {/* Completion banner (loading mode, 100%) */}
-              {mode === "loading" && isComplete && (
-                <div className="flex items-center gap-3 px-5 py-3 bg-emerald-50 border-b border-emerald-200 animate-fade-slide-down">
-                  <span className="material-symbols-outlined text-emerald-600 animate-bounce-in">
-                    check_circle
-                  </span>
-                  <span className="text-sm font-semibold text-emerald-700">
-                    Korean review complete — {partialKoResults.length}{" "}
-                    suggestions found
-                  </span>
                 </div>
               )}
 
@@ -471,6 +471,13 @@ export default function KoReviewWorkspace() {
                                       OK
                                     </span>
                                   )
+                                ) : agentPhase === "complete" ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-bounce-in">
+                                    <span className="material-symbols-outlined text-sm">
+                                      check
+                                    </span>
+                                    OK
+                                  </span>
                                 ) : agentPhase === "reviewing" ? (
                                   <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light/50 px-2.5 py-0.5 text-xs font-medium text-primary animate-breathe">
                                     <span className="material-symbols-outlined text-sm animate-spin360">
@@ -674,12 +681,16 @@ export default function KoReviewWorkspace() {
       </main>
 
       {/* ═══ Footer ═══ */}
-      {mode === "review" && (
+      {(mode === "review" || isComplete) && (
         <Footer
           onBack={() => setCurrentStep("idle")}
-          onAction={handleApprove}
-          actionLabel={submitting ? "Processing..." : "Confirm & Next Step"}
-          actionDisabled={submitting}
+          onAction={mode === "review" ? handleApprove : undefined}
+          actionLabel={
+            mode === "review"
+              ? (submitting ? "Processing..." : "Confirm & Next Step")
+              : "Preparing review..."
+          }
+          actionDisabled={mode !== "review" || submitting}
         />
       )}
     </>
