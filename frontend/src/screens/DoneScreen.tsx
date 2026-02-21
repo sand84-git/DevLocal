@@ -35,10 +35,10 @@ export default function DoneScreen() {
 
         <div className="w-full space-y-8">
           {/* Success card */}
-          <div className={`bg-gradient-to-br from-white to-sky-50 rounded-2xl p-8 border border-sky-100 shadow-sm relative overflow-hidden ${STAGGER}`} style={staggerDelay(1)}>
+          <div className={`bg-gradient-to-br from-white to-sky-50 rounded-2xl p-8 border border-primary/20 shadow-soft relative overflow-hidden ${STAGGER}`} style={staggerDelay(1)}>
             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-sky-400/10 rounded-full blur-2xl" />
             <div className="flex items-start gap-6 relative z-10">
-              <div className="size-16 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center shrink-0 text-success">
+              <div className="size-16 bg-white rounded-xl shadow-sm border border-border-subtle flex items-center justify-center shrink-0 text-success">
                 <span className="material-symbols-outlined text-4xl">
                   task_alt
                 </span>
@@ -48,11 +48,11 @@ export default function DoneScreen() {
                   <h2 className="text-xl font-bold text-text-main">
                     Translation Successful
                   </h2>
-                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-green-200 uppercase tracking-wide">
+                  <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 uppercase tracking-wide">
                     {translationsApplied ? "Pushed" : "Ready to Push"}
                   </span>
                 </div>
-                <p className="text-slate-600 text-base leading-relaxed mb-6">
+                <p className="text-text-muted text-base leading-relaxed mb-6">
                   <strong className="text-text-main">
                     {totalRows || reviewResults.length} rows
                   </strong>{" "}
@@ -64,10 +64,10 @@ export default function DoneScreen() {
                     ? `${failedRows.length} items failed validation (tag mismatch after 3 retries).`
                     : "All validations passed successfully."}
                 </p>
-                <div className="w-full bg-white/50 rounded-full h-3 mb-2 border border-sky-100">
+                <div className="w-full bg-white/50 rounded-full h-3 mb-2 border border-primary/20">
                   <div className="bg-success h-full rounded-full w-full shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
                 </div>
-                <div className="flex justify-between text-xs font-medium text-slate-500">
+                <div className="flex justify-between text-xs font-medium text-text-muted">
                   <span>Validation Progress</span>
                   <span>100%</span>
                 </div>
@@ -138,16 +138,16 @@ function MetricCard({
   badge: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col items-center text-center">
+    <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl shadow-soft hover:shadow-md transition-shadow flex flex-col items-center text-center">
       <div className={`p-3 rounded-full ${iconColor} mb-3`}>
         <span className="material-symbols-outlined text-2xl">{icon}</span>
       </div>
-      <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">
+      <p className="text-text-muted text-xs font-medium uppercase tracking-wider mb-1">
         {label}
       </p>
       <p className="text-3xl font-bold text-text-main mb-2">{value}</p>
       {badge && (
-        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-surface-pale text-text-muted">
           {badge}
         </span>
       )}

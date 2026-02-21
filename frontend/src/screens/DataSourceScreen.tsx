@@ -80,7 +80,7 @@ export default function DataSourceScreen() {
     <>
       <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 flex flex-col items-center justify-center">
         <div className="w-full max-w-3xl space-y-6">
-          <section className="rounded-xl border border-border-subtle bg-bg-surface p-8 shadow-soft">
+          <section className="rounded-xl border border-border-subtle bg-bg-surface p-8 shadow-soft animate-fade-slide-up">
             <div className="mb-8">
               <h3 className="text-xl font-bold text-text-main">
                 Data Source Configuration
@@ -227,15 +227,18 @@ export default function DataSourceScreen() {
 
             {/* Error message */}
             {error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2 animate-fade-slide-down">
+                <span className="material-symbols-outlined text-lg animate-shake">
+                  error
+                </span>
                 {error}
               </div>
             )}
           </section>
 
           {/* Tip */}
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-3 text-sm text-blue-800">
-            <span className="material-symbols-outlined text-blue-600 shrink-0">
+          <div className="bg-primary-light border border-primary/20 rounded-lg p-4 flex gap-3 text-sm text-primary-dark animate-fade-slide-up" style={{ animationDelay: '80ms' }}>
+            <span className="material-symbols-outlined text-primary shrink-0">
               tips_and_updates
             </span>
             <div>

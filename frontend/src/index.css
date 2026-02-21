@@ -173,33 +173,6 @@
   animation: rowFadeIn 300ms ease-out both;
 }
 
-/* ── Section Fade-out (progress bar 퇴장) ── */
-@keyframes sectionFadeOut {
-  from { opacity: 1; max-height: 300px; }
-  to { opacity: 0; max-height: 0; overflow: hidden; }
-}
-.animate-section-fade-out {
-  animation: sectionFadeOut 400ms ease-out forwards;
-}
-
-/* ── Section Fade-in (순수 opacity — translateY 제거로 지터 방지) ── */
-@keyframes sectionFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.animate-section-fade-in {
-  animation: sectionFadeIn 400ms ease-out both;
-}
-
-/* ── Content Slide-in (카드 내부 콘텐츠 교체: 우→좌, 투명 없이 슬라이드만) ── */
-@keyframes contentSlideIn {
-  from { transform: translateX(16px); }
-  to { transform: translateX(0); }
-}
-.animate-content-slide-in {
-  animation: contentSlideIn 280ms ease-out both;
-}
-
 /* ── Tabular Nums (카운트업용) ── */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
