@@ -6,6 +6,11 @@ from config.constants import TAG_PATTERNS
 from config.glossary import GLOSSARY
 
 
+def _normalize_escapes(text: str) -> str:
+    """실제 개행/탭 → 리터럴 \\n \\t 정규화 (태그 비교용)"""
+    return text.replace("\n", "\\n").replace("\t", "\\t")
+
+
 def validate_tags(source_ko: str, translated: str) -> dict:
     """
     정규식으로 태그 개수/문자열 동일성 검증.
@@ -15,10 +20,13 @@ def validate_tags(source_ko: str, translated: str) -> dict:
         {"valid": bool, "errors": [str]}
     """
     errors = []
+    # 실제 개행/탭과 리터럴 \\n \\t를 동일하게 취급
+    norm_source = _normalize_escapes(source_ko)
+    norm_translated = _normalize_escapes(translated)
 
     for pattern in TAG_PATTERNS:
-        source_tags = re.findall(pattern, source_ko)
-        translated_tags = re.findall(pattern, translated)
+        source_tags = re.findall(pattern, norm_source)
+        translated_tags = re.findall(pattern, norm_translated)
 
         if sorted(source_tags) != sorted(translated_tags):
             errors.append(

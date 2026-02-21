@@ -273,10 +273,14 @@ async def api_stream(session_id: str):
 
     loop = asyncio.get_event_loop()
     session._loop = loop
-    session.event_queue = asyncio.Queue()
 
-    # 백그라운드에서 초기 phase 실행
-    executor.submit(_run_initial_phase, session)
+    # Queue: 없을 때만 새로 생성 (SSE 재연결 시 기존 Queue 유지)
+    if session.event_queue is None:
+        session.event_queue = asyncio.Queue()
+
+    # loading 상태일 때만 초기 phase 실행 (재연결 시 재실행 방지)
+    if session.current_step == "loading":
+        executor.submit(_run_initial_phase, session)
 
     async def event_generator():
         while True:
@@ -391,6 +395,18 @@ async def api_approve_ko(session_id: str, req: ApprovalRequest):
     return {"status": "translating"}
 
 
+def _emit_done(session):
+    """SSE done 이벤트 전송 — EventSource 정상 종료용"""
+    try:
+        if session.event_queue and session._loop:
+            asyncio.run_coroutine_threadsafe(
+                session.event_queue.put(("done", {})),
+                session._loop,
+            )
+    except Exception:
+        pass
+
+
 # ── HITL 2: Final Approval ───────────────────────────────────────────
 
 @router.post("/approve-final/{session_id}")
@@ -417,6 +433,7 @@ async def api_approve_final(session_id: str, req: ApprovalRequest):
                     pass
 
             session.current_step = "done"
+            _emit_done(session)
             return {
                 "status": "done",
                 "updates_count": len(updates),
@@ -448,6 +465,7 @@ async def api_approve_final(session_id: str, req: ApprovalRequest):
                 batch_update_sheet(session.worksheet, revert_updates, session.df)
 
         session.current_step = "done"
+        _emit_done(session)
         return {"status": "done", "translations_applied": False}
 
 
