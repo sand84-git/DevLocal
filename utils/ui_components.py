@@ -1,4 +1,4 @@
-"""UI 컴포넌트 헬퍼 — Fixoria 디자인 시스템 (Warm Neutral + Green Accent)"""
+"""UI 컴포넌트 헬퍼 — DevLocal Sky Blue 디자인 시스템"""
 
 import html as html_module
 import streamlit as st
@@ -6,207 +6,226 @@ import streamlit.components.v1 as components
 
 
 def inject_custom_css():
-    """전체 커스텀 CSS 주입 — Fixoria 워밍 뉴트럴 스타일"""
+    """전체 커스텀 CSS 주입 — Sky Blue 디자인 시스템"""
     st.markdown(
         """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
     /* ══════════════════════════════════════════
-       Design Tokens — Fixoria Warm Neutral
+       Design Tokens — Sky Blue
        ══════════════════════════════════════════ */
     :root {
-        --bg-main: #F4F2EE;
-        --bg-card: #FFFFFF;
-        --bg-sidebar: #FAFAF8;
-        --bg-sidebar-hover: #F0EDE7;
-        --bg-sidebar-active: #F0EDE7;
+        --primary: #0ea5e9;
+        --primary-dark: #0284c7;
+        --primary-light: #e0f2fe;
+        --primary-glow: rgba(14,165,233,0.18);
 
-        --accent: #4A7C59;
-        --accent-hover: #3D6B4C;
-        --accent-light: #E4F0E4;
-        --accent-glow: rgba(74,124,89,0.18);
+        --bg-page: #f8fafc;
+        --bg-surface: #ffffff;
 
-        --success: #4A7C59;
-        --success-light: #E4F0E4;
-        --warning: #C4A67D;
-        --warning-light: #FFF6E9;
-        --error: #C75050;
-        --error-light: #FFEBEE;
+        --border-subtle: #e2e8f0;
+        --border-light: #f1f5f9;
+        --border-strong: #cbd5e1;
 
-        --text-primary: #1A1A1A;
-        --text-secondary: #5A5A5A;
-        --text-muted: #A0A0A0;
-        --text-sidebar: #1A1A1A;
-        --text-sidebar-muted: #8A8A8A;
+        --text-main: #1e293b;
+        --text-secondary: #475569;
+        --text-muted: #64748b;
 
-        --border: #EEEDEA;
-        --border-light: #F5F4F1;
-        --border-strong: #DEDBD5;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --warning-light: #fef3c7;
+        --error: #ef4444;
+        --error-light: #fee2e2;
 
-        --shadow-sm: none;
-        --shadow-md: none;
+        --diff-added: #dcfce7;
+        --diff-removed: #fee2e2;
+
+        --shadow-card: 0 4px 20px -2px rgba(0,0,0,0.05);
+        --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.04);
 
         --radius-sm: 6px;
         --radius-md: 8px;
         --radius-lg: 12px;
-        --radius-xl: 20px;
+        --radius-xl: 9999px;
     }
 
     /* ══════════════════════════════════════════
        Global
        ══════════════════════════════════════════ */
     .stApp {
-        background-color: var(--bg-main);
-        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background-color: var(--bg-page);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     h1, h2, h3 {
-        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        color: var(--text-primary) !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        color: var(--text-main) !important;
         font-weight: 700;
         letter-spacing: -0.5px;
     }
 
+    /* Hide sidebar completely */
+    [data-testid="stSidebar"] { display: none !important; }
+    section[data-testid="stSidebar"] { display: none !important; }
+
     /* ══════════════════════════════════════════
-       Light Sidebar
+       Header Bar
        ══════════════════════════════════════════ */
-    [data-testid="stSidebar"] {
-        background: var(--bg-sidebar);
-        border-right: 1px solid var(--border);
+    .dl-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.8rem 1.5rem;
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-card);
+        margin-bottom: 1.5rem;
+        animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    [data-testid="stSidebar"] > div:first-child {
-        padding-top: 0.8rem;
+    .dl-header-logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        letter-spacing: -0.3px;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
-
-    /* Sidebar text overrides */
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] .stMarkdown,
-    [data-testid="stSidebar"] .stMarkdown p {
-        color: var(--text-sidebar) !important;
+    .dl-header-logo .logo-icon {
+        font-size: 1.2rem;
     }
-    [data-testid="stSidebar"] .sidebar-section-title {
-        font-size: 0.68rem;
-        font-weight: 500;
-        color: var(--text-sidebar-muted) !important;
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-        margin-bottom: 0.5rem;
-        padding-bottom: 0;
-        border-bottom: none;
-    }
-
-    /* Sidebar text input */
-    [data-testid="stSidebar"] .stTextInput input {
-        background-color: #FFFFFF;
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        color: var(--text-primary) !important;
-        font-size: 0.85rem;
-        font-family: 'DM Sans', sans-serif;
-    }
-    [data-testid="stSidebar"] .stTextInput input:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px var(--accent-glow);
-    }
-    [data-testid="stSidebar"] .stTextInput input::placeholder {
-        color: var(--text-muted) !important;
+    .dl-header-steps {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        flex: 1;
+        justify-content: center;
     }
 
-    /* Sidebar selectbox */
-    [data-testid="stSidebar"] [data-baseweb="select"] {
-        border-radius: var(--radius-md);
+    /* ══════════════════════════════════════════
+       5-Step Indicator (Stitch style)
+       ══════════════════════════════════════════ */
+    .step-indicator {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 0;
+        background: transparent;
+        border: none;
+        margin-bottom: 0;
+        gap: 0;
     }
-    [data-testid="stSidebar"] [data-baseweb="select"] > div {
-        background-color: #FFFFFF;
-        border-color: var(--border);
-        color: var(--text-primary) !important;
-    }
-    [data-testid="stSidebar"] [data-baseweb="select"] > div:hover {
-        border-color: var(--border-strong);
-    }
-
-    /* Sidebar multiselect */
-    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div {
-        background-color: #FFFFFF;
-        border-color: var(--border);
-    }
-    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {
-        background-color: var(--accent) !important;
-        color: white !important;
-        border-radius: var(--radius-sm) !important;
-    }
-    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] span,
-    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] div,
-    [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {
-        color: white !important;
-        font-weight: 600 !important;
-    }
-
-    /* Sidebar radio */
-    [data-testid="stSidebar"] .stRadio label {
-        color: var(--text-sidebar) !important;
-    }
-
-    /* Sidebar number input */
-    [data-testid="stSidebar"] .stNumberInput input {
-        background-color: #FFFFFF;
-        border-color: var(--border);
-        color: var(--text-primary) !important;
-        border-radius: var(--radius-md);
-        font-family: 'DM Sans', sans-serif;
-    }
-
-    /* Sidebar divider */
-    [data-testid="stSidebar"] hr {
-        border-color: var(--border);
-        margin: 0.8rem 0;
-    }
-
-    /* Sidebar buttons — primary */
-    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"],
-    [data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background: var(--accent) !important;
-        border: none !important;
-        color: white !important;
+    .step-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
         width: 100%;
-        font-weight: 700 !important;
-        font-size: 0.9rem !important;
-        font-family: 'DM Sans', sans-serif !important;
-        padding: 0.6rem 1rem !important;
-        letter-spacing: 0.3px;
     }
-    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] p,
-    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] span,
-    [data-testid="stSidebar"] .stButton > button[kind="primary"] p,
-    [data-testid="stSidebar"] .stButton > button[kind="primary"] span {
-        color: white !important;
-        font-weight: 700 !important;
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
     }
-    [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"]:hover,
-    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
-        background: var(--accent-hover) !important;
+    .step-circle {
+        width: 32px; height: 32px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
+        transition: all 0.3s ease;
     }
-    /* Sidebar buttons — secondary */
-    [data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"],
-    [data-testid="stSidebar"] .stButton > button:not([kind="primary"]) {
-        background: #FFFFFF !important;
-        border-color: var(--border) !important;
-        color: var(--text-secondary) !important;
-        font-size: 0.8rem !important;
+    .step-circle .material-symbols-rounded {
+        font-size: 18px;
+        font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20;
     }
-    [data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"]:hover,
-    [data-testid="stSidebar"] .stButton > button:not([kind="primary"]):hover {
-        background: var(--bg-sidebar-hover) !important;
-        border-color: var(--border-strong) !important;
-        color: var(--text-primary) !important;
+    .step-circle.done {
+        background-color: var(--success-light);
+        color: var(--success);
     }
+    .step-circle.done .material-symbols-rounded {
+        font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 20;
+    }
+    .step-circle.active {
+        background: var(--primary);
+        color: white;
+        animation: pulse-primary 2s ease-in-out infinite;
+    }
+    .step-circle.pending {
+        background-color: var(--border-light);
+        color: var(--text-muted);
+    }
+    .step-label {
+        font-size: 0.68rem; font-weight: 600;
+        letter-spacing: -0.1px; font-family: 'Inter', sans-serif;
+        white-space: nowrap;
+    }
+    .step-label.done { color: var(--success); }
+    .step-label.active { color: var(--primary); font-weight: 700; }
+    .step-label.pending { color: var(--text-muted); }
+    .step-connector {
+        width: 40px; height: 2px; margin: 0 6px;
+        flex-shrink: 0; border-radius: 1px;
+        margin-bottom: 20px;  /* align with circle center */
+    }
+    .step-connector.done { background-color: var(--success); }
+    .step-connector.active { background: linear-gradient(90deg, var(--success), var(--primary)); }
+    .step-connector.pending { background-color: var(--border-subtle); }
 
-    /* Sidebar expander */
-    [data-testid="stSidebar"] .streamlit-expanderHeader {
-        color: var(--text-secondary) !important;
+    /* ══════════════════════════════════════════
+       Step Progress — spinner
+       ══════════════════════════════════════════ */
+    .step-progress {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 0.8rem 0 0.4rem;
+    }
+    .step-progress-spinner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .sparkle {
+        display: inline-block;
+        font-size: 0.9rem;
+        color: var(--primary);
+        animation: sparkle-spin 3s linear infinite;
+    }
+    .progress-label {
         font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-family: 'Inter', sans-serif;
+        letter-spacing: -0.2px;
+    }
+    .progress-label::after {
+        content: '';
+        animation: label-dots 1.8s steps(3, end) infinite;
+    }
+    .step-progress-track {
+        width: 100%;
+        max-width: 360px;
+        height: 3px;
+        background: var(--border-subtle);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .step-progress-bar {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 2px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .step-progress-bar.indeterminate {
+        width: 40%;
+        animation: progress-slide 1.8s ease-in-out infinite;
     }
 
     /* ══════════════════════════════════════════
@@ -214,16 +233,17 @@ def inject_custom_css():
        ══════════════════════════════════════════ */
     button[data-testid="stBaseButton-primary"],
     .stButton > button[kind="primary"] {
-        background: var(--accent) !important;
+        background: var(--primary) !important;
         border: none !important;
         border-radius: var(--radius-md) !important;
         color: white !important;
         font-weight: 700 !important;
         font-size: 0.95rem !important;
-        font-family: 'DM Sans', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         padding: 0.6rem 1.4rem !important;
         letter-spacing: 0.3px;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow-sm);
     }
     button[data-testid="stBaseButton-primary"] p,
     button[data-testid="stBaseButton-primary"] span,
@@ -234,8 +254,9 @@ def inject_custom_css():
     }
     button[data-testid="stBaseButton-primary"]:hover,
     .stButton > button[kind="primary"]:hover {
-        background: var(--accent-hover) !important;
+        background: var(--primary-dark) !important;
         transform: translateY(-1px);
+        box-shadow: var(--shadow-card);
     }
     button[data-testid="stBaseButton-primary"]:active,
     .stButton > button[kind="primary"]:active {
@@ -247,19 +268,19 @@ def inject_custom_css():
     .stButton > button:not([kind="primary"]) {
         border-radius: var(--radius-md) !important;
         border: 1px solid var(--border-strong) !important;
-        color: var(--text-primary) !important;
+        color: var(--text-main) !important;
         font-weight: 600 !important;
         font-size: 0.9rem !important;
-        font-family: 'DM Sans', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         padding: 0.6rem 1.4rem !important;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        background: var(--bg-card) !important;
+        background: var(--bg-surface) !important;
     }
     button[data-testid="stBaseButton-secondary"]:hover,
     .stButton > button:not([kind="primary"]):hover {
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-        background: var(--accent-light) !important;
+        border-color: var(--primary) !important;
+        color: var(--primary) !important;
+        background: var(--primary-light) !important;
     }
 
     /* Download button */
@@ -267,29 +288,30 @@ def inject_custom_css():
     button[data-testid="stBaseButton-secondary"].st-emotion-cache-download {
         border-radius: var(--radius-md) !important;
         border: 1px solid var(--border-strong) !important;
-        color: var(--text-primary) !important;
+        color: var(--text-main) !important;
         font-weight: 600 !important;
         font-size: 0.85rem !important;
-        font-family: 'DM Sans', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         transition: all 0.2s ease;
-        background: var(--bg-card) !important;
+        background: var(--bg-surface) !important;
     }
     .stDownloadButton > button:hover {
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-        background: var(--accent-light) !important;
+        border-color: var(--primary) !important;
+        color: var(--primary) !important;
+        background: var(--primary-light) !important;
     }
 
     /* ══════════════════════════════════════════
        Cards
        ══════════════════════════════════════════ */
     .dl-card {
-        background: var(--bg-card);
+        background: var(--bg-surface);
         border-radius: var(--radius-lg);
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-subtle);
         padding: 0;
         margin: 1rem 0;
         overflow: hidden;
+        box-shadow: var(--shadow-card);
         animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .dl-card-header {
@@ -297,20 +319,20 @@ def inject_custom_css():
         align-items: center;
         gap: 10px;
         padding: 1rem 1.3rem;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--border-subtle);
     }
     .dl-card-header .icon { font-size: 1.05rem; }
     .dl-card-header .title {
         font-size: 0.92rem;
         font-weight: 700;
-        color: var(--text-primary);
+        color: var(--text-main);
         letter-spacing: -0.3px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
     .dl-card-header .badge {
         margin-left: auto;
-        background: var(--accent-light);
-        color: var(--accent);
+        background: var(--primary-light);
+        color: var(--primary);
         padding: 2px 10px;
         border-radius: var(--radius-xl);
         font-size: 0.72rem;
@@ -319,108 +341,47 @@ def inject_custom_css():
     .dl-card-body { padding: 18px 20px; }
 
     /* ══════════════════════════════════════════
-       Step Indicator
+       Placeholder Card (idle state)
        ══════════════════════════════════════════ */
-    .step-indicator {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        padding: 0.9rem 2rem;
-        background: var(--bg-card);
+    .dl-placeholder-card {
+        background: var(--bg-surface);
         border-radius: var(--radius-lg);
-        border: 1px solid var(--border);
-        margin-bottom: 1.2rem;
-        gap: 0;
-        animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 2px dashed var(--border-subtle);
+        padding: 3rem 2rem;
+        text-align: center;
+        margin: 1rem 0;
+        animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .step-row {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
+    .dl-placeholder-card .placeholder-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.8rem;
+        color: var(--text-muted);
     }
-    .step-item { display: flex; align-items: center; gap: 7px; }
-    .step-circle {
-        width: 28px; height: 28px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
-        transition: all 0.3s ease;
-        font-family: 'DM Sans', sans-serif;
+    .dl-placeholder-card .placeholder-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 0.4rem;
+        font-family: 'Inter', sans-serif;
     }
-    .step-circle.done { background-color: var(--success-light); color: var(--success); }
-    .step-circle.active {
-        background: var(--accent);
-        color: white;
-        animation: pulse-green 2s ease-in-out infinite;
+    .dl-placeholder-card .placeholder-desc {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-family: 'Inter', sans-serif;
     }
-    .step-circle.pending { background-color: var(--border-light); color: var(--text-muted); }
-    .step-label {
-        font-size: 0.78rem; font-weight: 700;
-        letter-spacing: -0.2px; font-family: 'DM Sans', sans-serif;
-    }
-    .step-label.done { color: var(--success); }
-    .step-label.active { color: var(--accent); }
-    .step-label.pending { color: var(--text-muted); }
-    .step-connector {
-        width: 46px; height: 2px; margin: 0 10px;
-        flex-shrink: 0; border-radius: 1px;
-    }
-    .step-connector.done { background-color: var(--success); }
-    .step-connector.active { background: linear-gradient(90deg, var(--success), var(--accent)); }
-    .step-connector.pending { background-color: var(--border); }
 
     /* ══════════════════════════════════════════
-       Step Progress — Claude-style spinner
+       Footer
        ══════════════════════════════════════════ */
-    .step-progress {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        padding: 0.4rem 0 0.2rem;
-        border-top: 1px solid var(--border-light);
-        margin-top: 0.6rem;
-    }
-    .step-progress-spinner {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .sparkle {
-        display: inline-block;
-        font-size: 0.9rem;
-        color: var(--accent);
-        animation: sparkle-spin 3s linear infinite;
-    }
-    .progress-label {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        font-family: 'DM Sans', sans-serif;
-        letter-spacing: -0.2px;
-    }
-    .progress-label::after {
-        content: '';
-        animation: label-dots 1.8s steps(3, end) infinite;
-    }
-    .step-progress-track {
-        width: 100%;
-        max-width: 360px;
-        height: 3px;
-        background: var(--border);
-        border-radius: 2px;
-        overflow: hidden;
-    }
-    .step-progress-bar {
-        height: 100%;
-        background: var(--accent);
-        border-radius: 2px;
-        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .step-progress-bar.indeterminate {
-        width: 40%;
-        animation: progress-slide 1.8s ease-in-out infinite;
+    .dl-footer {
+        position: sticky;
+        bottom: 0;
+        background: var(--bg-surface);
+        border-top: 1px solid var(--border-subtle);
+        padding: 12px 24px;
+        margin-top: 2rem;
+        z-index: 100;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
     }
 
     /* ══════════════════════════════════════════
@@ -441,9 +402,9 @@ def inject_custom_css():
         50%  { margin-left: 60%; }
         100% { margin-left: 0; }
     }
-    @keyframes pulse-green {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(74,124,89,0.35); }
-        50% { box-shadow: 0 0 0 8px rgba(74,124,89,0); }
+    @keyframes pulse-primary {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(14,165,233,0.35); }
+        50% { box-shadow: 0 0 0 8px rgba(14,165,233,0); }
     }
     @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(14px); }
@@ -463,13 +424,13 @@ def inject_custom_css():
     }
     .done-header .checkmark {
         width: 48px; height: 48px; border-radius: 50%;
-        background: var(--success-light); color: var(--success);
+        background: var(--primary-light); color: var(--primary);
         display: inline-flex; align-items: center; justify-content: center;
         font-size: 1.5rem; margin-bottom: 0.6rem;
     }
     .done-header h2 {
         font-size: 1.2rem; font-weight: 700;
-        color: var(--text-primary) !important; margin-bottom: 0.2rem;
+        color: var(--text-main) !important; margin-bottom: 0.2rem;
     }
     .done-header p { color: var(--text-muted) !important; font-size: 0.85rem; }
 
@@ -480,69 +441,17 @@ def inject_custom_css():
         display: inline-flex; align-items: center; gap: 5px;
         padding: 3px 10px; border-radius: var(--radius-xl);
         font-size: 0.72rem; font-weight: 700; margin-top: 4px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
-    .connection-badge.success { background: var(--accent-light); color: var(--accent); }
+    .connection-badge.success { background: var(--primary-light); color: var(--primary); }
     .connection-badge.error { background: var(--error-light); color: var(--error); }
-
-    /* ══════════════════════════════════════════
-       App Header
-       ══════════════════════════════════════════ */
-    .app-header { text-align: center; padding: 0.2rem 0 1rem; }
-    .app-header h1 {
-        font-size: 1.3rem !important; font-weight: 700;
-        color: var(--text-primary) !important;
-        margin-bottom: 0.1rem; letter-spacing: -0.5px;
-        font-family: 'DM Sans', sans-serif !important;
-    }
-    .app-header .subtitle {
-        font-size: 0.78rem; color: var(--text-muted) !important;
-        font-weight: 400; font-family: 'DM Sans', sans-serif;
-    }
-
-    /* ══════════════════════════════════════════
-       Sidebar Logo
-       ══════════════════════════════════════════ */
-    .sidebar-logo {
-        text-align: center; padding: 0.2rem 0 0.8rem;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 0.8rem;
-    }
-    .sidebar-logo .name {
-        font-size: 1.15rem; font-weight: 700;
-        color: var(--text-primary) !important; letter-spacing: -0.3px;
-        font-family: 'DM Sans', sans-serif;
-    }
-    .sidebar-logo .dot { color: var(--accent) !important; }
-    .sidebar-logo .version {
-        font-size: 0.65rem; color: var(--text-muted) !important; font-weight: 500;
-    }
-
-    /* ══════════════════════════════════════════
-       Saved URL Display
-       ══════════════════════════════════════════ */
-    .saved-url {
-        display: flex; align-items: center; gap: 8px;
-        background: #FFFFFF;
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        padding: 7px 11px; margin-bottom: 0.4rem;
-    }
-    .saved-url .url-dot {
-        width: 6px; height: 6px; border-radius: 50%;
-        background: var(--accent); flex-shrink: 0;
-    }
-    .saved-url .url-text {
-        font-size: 0.78rem; color: var(--text-secondary) !important;
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
-    }
 
     /* ══════════════════════════════════════════
        Log Terminal
        ══════════════════════════════════════════ */
     .log-terminal {
-        background: #FAFAF8;
-        border: 1px solid var(--border);
+        background: var(--bg-page);
+        border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
         padding: 0.8rem 1rem;
         font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
@@ -553,13 +462,13 @@ def inject_custom_css():
     .log-terminal .log-success { color: var(--success); }
     .log-terminal .log-warn { color: var(--warning); }
     .log-terminal .log-error { color: var(--error); }
-    .log-terminal .log-info { color: var(--accent); }
+    .log-terminal .log-info { color: var(--primary); }
     .log-terminal .log-divider {
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--border-subtle);
         margin: 6px 0 4px;
         padding-top: 4px;
         font-weight: 700;
-        color: var(--text-primary);
+        color: var(--text-main);
         font-size: 0.74rem;
     }
     .log-terminal .log-icon {
@@ -578,20 +487,21 @@ def inject_custom_css():
         gap: 10px; margin: 0.8rem 0;
     }
     .metric-item {
-        background: var(--bg-card); border: 1px solid var(--border);
+        background: var(--bg-surface); border: 1px solid var(--border-subtle);
         border-radius: var(--radius-lg); padding: 1rem; text-align: center;
+        box-shadow: var(--shadow-sm);
     }
     .metric-item .metric-value {
         font-size: 1.6rem; font-weight: 700;
-        color: var(--text-primary); letter-spacing: -0.5px;
-        font-family: 'DM Sans', sans-serif;
+        color: var(--text-main); letter-spacing: -0.5px;
+        font-family: 'Inter', sans-serif;
     }
     .metric-item .metric-label {
         font-size: 0.65rem; font-weight: 500; color: var(--text-muted);
         text-transform: uppercase; letter-spacing: 1.2px; margin-top: 4px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
-    .metric-item.accent .metric-value { color: var(--accent); }
+    .metric-item.accent .metric-value { color: var(--primary); }
     .metric-item.success .metric-value { color: var(--success); }
     .metric-item.warning .metric-value { color: var(--warning); }
     .metric-item.error .metric-value { color: var(--error); }
@@ -600,25 +510,25 @@ def inject_custom_css():
        Misc Overrides
        ══════════════════════════════════════════ */
     .stProgress > div > div {
-        background: var(--accent);
+        background: var(--primary);
         border-radius: 4px;
     }
-    hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+    hr { border: none; border-top: 1px solid var(--border-subtle); margin: 1rem 0; }
     .stDataFrame {
         border-radius: var(--radius-md); overflow: hidden;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-subtle);
         animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
     }
 
-    /* Streamlit alert/expander 등장 애니메이션 */
+    /* Streamlit alert/expander animation */
     .stAlert, .stExpander, .stSuccess, .stInfo, .stWarning {
         animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
-    .stSpinner > div > div { border-top-color: var(--accent) !important; }
+    .stSpinner > div > div { border-top-color: var(--primary) !important; }
     .streamlit-expanderHeader {
         font-size: 0.82rem; font-weight: 700;
         color: var(--text-secondary) !important;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
 
     /* Disabled state for locked sections */
@@ -628,87 +538,182 @@ def inject_custom_css():
     }
 
     /* ══════════════════════════════════════════
-       Pipeline Visualization
+       Data Source Configuration Card
        ══════════════════════════════════════════ */
-    .pipeline {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 1.2rem 1.5rem;
-        margin: 1rem 0;
-        animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    .dl-card-body .stTextInput > div > div > input {
+        border-radius: var(--radius-md) !important;
+        border: 1px solid var(--border-subtle) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.88rem !important;
+        padding: 0.55rem 0.8rem !important;
+        transition: border-color 0.2s ease !important;
     }
-    .pipeline-node {
+    .dl-card-body .stTextInput > div > div > input:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 2px var(--primary-glow) !important;
+    }
+    .dl-card-body .stSelectbox > div > div {
+        border-radius: var(--radius-md) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.88rem !important;
+    }
+    .dl-card-body .stMultiSelect > div > div {
+        border-radius: var(--radius-md) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.88rem !important;
+    }
+    .dl-card-body .stRadio > div {
+        font-family: 'Inter', sans-serif !important;
+    }
+    .dl-card-body .stRadio > div > label {
+        font-size: 0.88rem !important;
+        font-weight: 500 !important;
+    }
+    .dl-card-body .stNumberInput > div > div > input {
+        border-radius: var(--radius-md) !important;
+        border: 1px solid var(--border-subtle) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.88rem !important;
+    }
+    .dl-card-body label {
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+        color: var(--text-secondary) !important;
+        letter-spacing: -0.1px !important;
+    }
+    .dl-card-body .stExpander {
+        border: 1px solid var(--border-light) !important;
+        border-radius: var(--radius-md) !important;
+        margin-top: 0.5rem !important;
+    }
+
+    /* Saved URL inline display for Data Source card */
+    .ds-saved-url {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg-page);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 0.55rem 0.8rem;
+        min-height: 38px;
+    }
+    .ds-saved-url .url-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--primary); flex-shrink: 0;
+    }
+    .ds-saved-url .url-text {
+        font-size: 0.85rem; color: var(--text-secondary);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* ══════════════════════════════════════════
+       KR Review Table
+       ══════════════════════════════════════════ */
+    .review-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        font-family: 'Inter', sans-serif;
+    }
+    .review-table th {
+        background: var(--bg-page);
+        font-weight: 600;
+        text-align: left;
+        padding: 10px 14px;
+        border-bottom: 2px solid var(--border-subtle);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+    }
+    .review-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border-subtle);
+        vertical-align: top;
+        color: var(--text-main);
+    }
+    .review-table tr:hover {
+        background: var(--bg-page);
+    }
+    .review-table .col-num {
+        width: 40px;
+        text-align: center;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .review-table .col-key {
+        font-weight: 600;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+    .review-table .col-original {
+        background: var(--diff-removed);
+        border-radius: var(--radius-sm);
+        color: var(--text-main);
+    }
+    .review-table .col-suggested {
+        background: var(--diff-added);
+        border-radius: var(--radius-sm);
+        color: var(--text-main);
+    }
+    .review-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .review-badge.fix {
+        background: var(--warning-light);
+        color: var(--warning);
+    }
+    .review-badge.success {
+        background: var(--success-light);
+        color: var(--success);
+    }
+    .review-badge.fail {
+        background: var(--error-light);
+        color: var(--error);
+    }
+
+    /* ══════════════════════════════════════════
+       Overall Progress Bar (Final Review)
+       ══════════════════════════════════════════ */
+    .overall-progress {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 6px 0;
-        animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+        margin-bottom: 16px;
     }
-    .pipeline-node:nth-child(1)  { animation-delay: 0s; }
-    .pipeline-node:nth-child(3)  { animation-delay: 0.05s; }
-    .pipeline-node:nth-child(5)  { animation-delay: 0.1s; }
-    .pipeline-node:nth-child(7)  { animation-delay: 0.15s; }
-    .pipeline-node:nth-child(9)  { animation-delay: 0.2s; }
-    .pipeline-node:nth-child(11) { animation-delay: 0.25s; }
-    .pipeline-node:nth-child(13) { animation-delay: 0.3s; }
-    .pipeline-node:nth-child(15) { animation-delay: 0.35s; }
-    .pipeline-dot {
-        width: 22px; height: 22px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.65rem; font-weight: 700;
-        flex-shrink: 0;
-        transition: all 0.3s ease;
-    }
-    .pipeline-dot.pending {
-        background: transparent;
-        border: 2px solid var(--border-strong);
-        color: var(--text-muted);
-    }
-    .pipeline-dot.active {
-        background: var(--accent);
-        border: 2px solid var(--accent);
-        color: white;
-        animation: pulse-green 2s ease-in-out infinite;
-    }
-    .pipeline-dot.done {
-        background: var(--accent);
-        border: 2px solid var(--accent);
-        color: white;
-    }
-    .pipeline-dot.error {
-        background: var(--error);
-        border: 2px solid var(--error);
-        color: white;
-    }
-    .pipeline-label {
-        font-size: 0.82rem;
-        font-weight: 500;
-        font-family: 'DM Sans', sans-serif;
+    .overall-progress-track {
         flex: 1;
+        height: 8px;
+        background: var(--border-subtle);
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
     }
-    .pipeline-label.pending { color: var(--text-muted); }
-    .pipeline-label.active { color: var(--text-primary); font-weight: 700; }
-    .pipeline-label.done { color: var(--text-secondary); }
-    .pipeline-label.error { color: var(--error); }
-    .pipeline-status {
-        font-size: 0.72rem;
-        font-family: 'DM Sans', sans-serif;
-        font-weight: 500;
+    .overall-progress-success {
+        height: 100%;
+        background: var(--success);
+        transition: width 0.4s ease;
+    }
+    .overall-progress-fail {
+        height: 100%;
+        background: var(--error);
+        transition: width 0.4s ease;
+    }
+    .overall-progress-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-family: 'Inter', sans-serif;
         white-space: nowrap;
     }
-    .pipeline-status.pending { color: var(--text-muted); }
-    .pipeline-status.active { color: var(--accent); }
-    .pipeline-status.done { color: var(--success); }
-    .pipeline-status.error { color: var(--error); }
-    .pipeline-connector {
-        width: 2px; height: 10px;
-        margin-left: 10px;
-        flex-shrink: 0;
-    }
-    .pipeline-connector.done { background: var(--accent); }
-    .pipeline-connector.active { background: linear-gradient(180deg, var(--accent), var(--border-strong)); }
-    .pipeline-connector.pending { background: var(--border); }
 </style>
 """,
         unsafe_allow_html=True,
@@ -717,35 +722,35 @@ def inject_custom_css():
 
 # ── Component Renderers ──────────────────────────────────────────────
 
+# Module-level constants for step indicator (used by render_header)
+_STEPS = [
+    {"label": "Load", "icon": "check"},
+    {"label": "KR Review", "icon": "chat_bubble"},
+    {"label": "Translating", "icon": "g_translate"},
+    {"label": "Multi-Review", "icon": "checklist"},
+    {"label": "Complete", "icon": "check_circle"},
+]
 
-def render_step_indicator(current_step: str, progress: dict = None):
-    """3단계 프로그레스 인디케이터 (progress 통합)
+_STEP_MAP = {
+    "idle": [0, 0, 0, 0, 0],
+    "loading": [1, 0, 0, 0, 0],
+    "ko_review": [2, 1, 0, 0, 0],
+    "translating": [2, 2, 1, 0, 0],
+    "final_review": [2, 2, 2, 1, 0],
+    "done": [2, 2, 2, 2, 2],
+}
 
-    Args:
-        current_step: 현재 단계 ("idle", "loading", "ko_review", "translating", ...)
-        progress: {"label": "AI 번역 진행중", "value": 0.5} 또는 None/{}
-    """
-    steps = [
-        {"label": "한국어 검수", "key": "step1"},
-        {"label": "번역 / 검수", "key": "step2"},
-        {"label": "최종 승인", "key": "step3"},
-    ]
-    step_map = {
-        "idle": ["pending", "pending", "pending"],
-        "loading": ["active", "pending", "pending"],
-        "ko_review": ["active", "pending", "pending"],
-        "translating": ["done", "active", "pending"],
-        "final_review": ["done", "done", "active"],
-        "done": ["done", "done", "done"],
-    }
-    states = step_map.get(current_step, ["pending", "pending", "pending"])
+_STATE_NAMES = {0: "pending", 1: "active", 2: "done"}
 
-    def circle(state, num):
-        if state == "done":
-            return '<div class="step-circle done">&#10003;</div>'
-        if state == "active":
-            return f'<div class="step-circle active">{num}</div>'
-        return f'<div class="step-circle pending">{num}</div>'
+
+def _build_steps_html(current_step: str) -> str:
+    """Build the step circles + connectors HTML string."""
+    state_codes = _STEP_MAP.get(current_step, [0, 0, 0, 0, 0])
+    states = [_STATE_NAMES[c] for c in state_codes]
+
+    def circle(state, icon_name):
+        icon_html = f'<span class="material-symbols-rounded">{icon_name}</span>'
+        return f'<div class="step-circle {state}">{icon_html}</div>'
 
     def connector(prev_state, curr_state):
         if prev_state == "done" and curr_state == "done":
@@ -756,64 +761,59 @@ def render_step_indicator(current_step: str, progress: dict = None):
             cls = "pending"
         return f'<div class="step-connector {cls}"></div>'
 
-    # 스텝 행 구성
-    row_parts = []
-    for i, (step, state) in enumerate(zip(steps, states)):
+    parts = []
+    for i, (step, state) in enumerate(zip(_STEPS, states)):
         if i > 0:
-            row_parts.append(connector(states[i - 1], state))
-        row_parts.append(
+            parts.append(connector(states[i - 1], state))
+        parts.append(
             f'<div class="step-item">'
-            f"  {circle(state, i + 1)}"
+            f'  {circle(state, step["icon"])}'
             f'  <span class="step-label {state}">{step["label"]}</span>'
             f"</div>"
         )
-    step_row_html = f'<div class="step-row">{"".join(row_parts)}</div>'
+    return "".join(parts)
 
-    # 프로그레스 영역 (있을 때만)
-    progress_html = ""
-    if progress and progress.get("label") and current_step not in ("idle", "done"):
-        label = html_module.escape(progress["label"])
-        value = progress.get("value", 0)
-        bar_cls = "step-progress-bar indeterminate" if value <= 0 else "step-progress-bar"
-        bar_style = f"width: {int(value * 100)}%;" if value > 0 else ""
-        progress_html = (
-            f'<div class="step-progress">'
-            f'  <div class="step-progress-spinner">'
-            f'    <span class="sparkle">✦</span>'
-            f'    <span class="progress-label">{label}</span>'
-            f'  </div>'
-            f'  <div class="step-progress-track">'
-            f'    <div class="{bar_cls}" style="{bar_style}"></div>'
-            f'  </div>'
-            f'</div>'
-        )
 
-    st.markdown(
-        f'<div class="step-indicator">{step_row_html}{progress_html}</div>',
-        unsafe_allow_html=True,
+def _build_progress_html(current_step: str, progress: dict) -> str:
+    """Build the progress spinner + bar HTML string."""
+    if not progress or not progress.get("label") or current_step in ("idle", "done"):
+        return ""
+    label = html_module.escape(progress["label"])
+    value = progress.get("value", 0)
+    bar_cls = "step-progress-bar indeterminate" if value <= 0 else "step-progress-bar"
+    bar_style = f"width: {int(value * 100)}%;" if value > 0 else ""
+    return (
+        f'<div class="step-progress">'
+        f'  <div class="step-progress-spinner">'
+        f'    <span class="sparkle">&#10022;</span>'
+        f'    <span class="progress-label">{label}</span>'
+        f'  </div>'
+        f'  <div class="step-progress-track">'
+        f'    <div class="{bar_cls}" style="{bar_style}"></div>'
+        f'  </div>'
+        f'</div>'
     )
 
 
-def render_step_progress(label: str, value: float):
-    """스텝 인디케이터 아래 Claude-style 프로그레스 스피너.
+def render_header(current_step: str = "idle", progress: dict = None):
+    """헤더 바: 로고 + 5단계 스텝 인디케이터 통합
 
     Args:
-        label: 현재 진행 라벨 (예: "AI 번역 진행중")
-        value: 0.0~1.0 진행률. 0이면 indeterminate 애니메이션.
+        current_step: 현재 단계
+        progress: 프로그레스 데이터
     """
-    safe_label = html_module.escape(label)
-    bar_cls = "step-progress-bar indeterminate" if value <= 0 else "step-progress-bar"
-    bar_width = f"width: {int(value * 100)}%;" if value > 0 else ""
+    steps_html = _build_steps_html(current_step)
+    progress_html = _build_progress_html(current_step, progress)
+
     st.markdown(
-        f'<div class="step-progress">'
-        f'  <div class="step-progress-spinner">'
-        f'    <span class="sparkle">✦</span>'
-        f'    <span class="progress-label">{safe_label}</span>'
+        f'<div class="dl-header">'
+        f'  <div class="dl-header-logo">'
+        f'    <span class="logo-icon">&#127760;</span>'
+        f'    Game Localization Tool'
         f'  </div>'
-        f'  <div class="step-progress-track">'
-        f'    <div class="{bar_cls}" style="{bar_width}"></div>'
-        f'  </div>'
-        f'</div>',
+        f'  <div class="dl-header-steps">{steps_html}</div>'
+        f'</div>'
+        f'{progress_html}',
         unsafe_allow_html=True,
     )
 
@@ -837,41 +837,6 @@ def render_card_end():
     st.markdown("</div></div>", unsafe_allow_html=True)
 
 
-def render_sidebar_logo():
-    st.markdown(
-        '<div class="sidebar-logo">'
-        '  <div class="name">Dev<span class="dot">.</span>Local</div>'
-        '  <div class="version">v1.0</div>'
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-
-def render_connection_badge(connected: bool, sheet_count: int = 0):
-    if connected:
-        st.markdown(
-            f'<span class="connection-badge success">'
-            f"&#9679; 연결됨 &middot; {sheet_count}개 시트</span>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            '<span class="connection-badge error">&#9679; 미연결</span>',
-            unsafe_allow_html=True,
-        )
-
-
-def render_app_header():
-    st.markdown(
-        '<div class="app-header">'
-        "  <h1>게임 로컬라이징 자동화</h1>"
-        '  <span class="subtitle">'
-        "AI 기반 다국어 번역 &middot; 검수 &middot; 자동화</span>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-
 def render_done_header():
     st.markdown(
         '<div class="done-header">'
@@ -883,15 +848,28 @@ def render_done_header():
     )
 
 
-def render_saved_url(url: str):
-    """고정된 시트 URL 표시 (라이트 사이드바용)"""
+def render_footer():
+    """하단 Footer — 시각적 구분선 역할. 실제 버튼은 Phase 2~4에서 배치."""
+    st.markdown(
+        '<div class="dl-footer">'
+        '  <div style="display:flex;justify-content:space-between;align-items:center;">'
+        '    <div class="footer-left"></div>'
+        '    <div class="footer-right"></div>'
+        '  </div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_saved_url_inline(url: str):
+    """Data Source 카드 내 고정된 시트 URL 표시"""
     display = url
-    if len(url) > 50:
-        display = url[:18] + "..." + url[-24:]
+    if len(url) > 60:
+        display = url[:22] + "..." + url[-28:]
     safe_url = html_module.escape(url)
     safe_display = html_module.escape(display)
     st.markdown(
-        f'<div class="saved-url">'
+        f'<div class="ds-saved-url">'
         f'  <div class="url-dot"></div>'
         f'  <span class="url-text" title="{safe_url}">{safe_display}</span>'
         f"</div>",
@@ -965,68 +943,129 @@ def render_metric_grid(metrics: list):
     )
 
 
-# ── Pipeline 노드 정의 ──────────────────────────────────────────────
+def render_ko_review_table(ko_report_df):
+    """한국어 검수 테이블 -- 커스텀 HTML 렌더링
 
-PIPELINE_NODES = [
-    {"key": "data_backup", "label": "데이터 확인"},
-    {"key": "context_glossary", "label": "컨텍스트 로드"},
-    {"key": "ko_review", "label": "한국어 검수"},
-    {"key": "ko_approval", "label": "한국어 승인"},
-    {"key": "translator", "label": "AI 번역"},
-    {"key": "reviewer", "label": "품질 검수"},
-    {"key": "final_approval", "label": "최종 승인"},
-    {"key": "writer", "label": "시트 업데이트"},
-]
-
-_STATUS_ICONS = {
-    "pending": "○",
-    "active": "◉",
-    "done": "✓",
-    "error": "✕",
-}
-
-_STATUS_TEXTS = {
-    "pending": "대기",
-    "active": "진행중",
-    "done": "완료",
-    "error": "오류",
-}
-
-
-def render_pipeline(pipeline_status: dict):
-    """8노드 버티컬 파이프라인 시각화.
-
-    pipeline_status: {"data_backup": "done", "translator": "active", ...}
-    키가 없으면 "pending"으로 처리.
+    Args:
+        ko_report_df: DataFrame with columns: Key, 기존 한국어, 수정 제안
     """
-    parts = []
-    for i, node in enumerate(PIPELINE_NODES):
-        state = pipeline_status.get(node["key"], "pending")
-        icon = _STATUS_ICONS.get(state, "○")
-        status_text = pipeline_status.get(f"{node['key']}_text", _STATUS_TEXTS.get(state, ""))
+    if ko_report_df is None or ko_report_df.empty:
+        return
 
-        # 커넥터 (첫 노드 제외)
-        if i > 0:
-            prev_state = pipeline_status.get(PIPELINE_NODES[i - 1]["key"], "pending")
-            if prev_state in ("done",) and state in ("done", "active"):
-                conn_cls = "done"
-            elif prev_state in ("done",) and state == "pending":
-                conn_cls = "active"
-            else:
-                conn_cls = "pending"
-            parts.append(
-                f'<div class="pipeline-connector {conn_cls}"></div>'
-            )
+    rows_html = []
+    for row_num, (_, row) in enumerate(ko_report_df.iterrows(), start=1):
+        key = html_module.escape(str(row.get("Key", "")))
+        original = html_module.escape(str(row.get("기존 한국어", "")))
+        suggested = html_module.escape(str(row.get("수정 제안", "")))
 
-        parts.append(
-            f'<div class="pipeline-node">'
-            f'  <div class="pipeline-dot {state}">{icon}</div>'
-            f'  <span class="pipeline-label {state}">{node["label"]}</span>'
-            f'  <span class="pipeline-status {state}">{html_module.escape(status_text)}</span>'
-            f'</div>'
+        rows_html.append(
+            f"<tr>"
+            f'  <td class="col-num">{row_num}</td>'
+            f'  <td class="col-key">{key}</td>'
+            f'  <td class="col-original">{original}</td>'
+            f'  <td class="col-suggested">{suggested}</td>'
+            f"</tr>"
         )
 
+    table_html = (
+        '<table class="review-table">'
+        "<thead><tr>"
+        "<th>#</th>"
+        "<th>Key</th>"
+        '<th>원본 (Korean)</th>'
+        '<th>AI 수정 제안</th>'
+        "</tr></thead>"
+        f'<tbody>{"".join(rows_html)}</tbody>'
+        "</table>"
+    )
+
+    st.markdown(table_html, unsafe_allow_html=True)
+
+
+def render_translation_review_table(translation_report_df, failed_keys: set = None):
+    """번역 검수 테이블 -- 커스텀 HTML 렌더링
+
+    Args:
+        translation_report_df: DataFrame with columns from generate_translation_diff_report()
+            - Key, 언어, 기존 번역, 새 번역, 변경 사유/내역
+        failed_keys: set of Key values that failed review (for status badge)
+    """
+    if translation_report_df is None or translation_report_df.empty:
+        return
+
+    if failed_keys is None:
+        failed_keys = set()
+
+    rows_html = []
+    for row_num, (_, row) in enumerate(translation_report_df.iterrows(), start=1):
+        key = html_module.escape(str(row.get("Key", "")))
+        lang = html_module.escape(str(row.get("언어", "")))
+        old_text = html_module.escape(str(row.get("기존 번역", "")))
+        new_text = html_module.escape(str(row.get("새 번역", "")))
+
+        # Status badge
+        raw_key = str(row.get("Key", ""))
+        if raw_key in failed_keys:
+            badge = '<span class="review-badge fail">검수실패</span>'
+        else:
+            badge = '<span class="review-badge success">번역완료</span>'
+
+        rows_html.append(
+            f"<tr>"
+            f'  <td class="col-num">{row_num}</td>'
+            f'  <td class="col-key">{key}</td>'
+            f"  <td>{lang}</td>"
+            f"  <td>{old_text}</td>"
+            f'  <td class="col-suggested">{new_text}</td>'
+            f"  <td>{badge}</td>"
+            f"</tr>"
+        )
+
+    table_html = (
+        '<table class="review-table">'
+        "<thead><tr>"
+        "<th>#</th>"
+        "<th>Key</th>"
+        "<th>Lang</th>"
+        '<th>기존 번역</th>'
+        '<th>새 번역</th>'
+        "<th>Status</th>"
+        "</tr></thead>"
+        f'<tbody>{"".join(rows_html)}</tbody>'
+        "</table>"
+    )
+
+    st.markdown(table_html, unsafe_allow_html=True)
+
+
+def render_overall_progress(success_count: int, fail_count: int):
+    """Overall progress bar — success/fail ratio
+
+    Args:
+        success_count: number of successful translations
+        fail_count: number of failed translations
+    """
+    total = success_count + fail_count
+    if total == 0:
+        return
+
+    success_pct = (success_count / total) * 100
+    fail_pct = (fail_count / total) * 100
+
     st.markdown(
-        f'<div class="pipeline">{"".join(parts)}</div>',
+        f'<div class="overall-progress">'
+        f'  <span class="overall-progress-label">'
+        f'    {success_count} passed'
+        f'  </span>'
+        f'  <div class="overall-progress-track">'
+        f'    <div class="overall-progress-success" style="width: {success_pct:.1f}%;"></div>'
+        f'    <div class="overall-progress-fail" style="width: {fail_pct:.1f}%;"></div>'
+        f'  </div>'
+        f'  <span class="overall-progress-label">'
+        f'    {fail_count} failed'
+        f'  </span>'
+        f'</div>',
         unsafe_allow_html=True,
     )
+
+

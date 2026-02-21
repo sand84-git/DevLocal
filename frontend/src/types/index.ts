@@ -1,0 +1,109 @@
+/* ── App Step (워크플로우 단계) ── */
+export type AppStep =
+  | "idle"
+  | "loading"
+  | "ko_review"
+  | "translating"
+  | "final_review"
+  | "done";
+
+/* ── API Request/Response ── */
+export interface ConnectRequest {
+  sheet_url: string;
+}
+
+export interface ConnectResponse {
+  sheet_names: string[];
+  bot_email: string;
+}
+
+export interface StartRequest {
+  sheet_url: string;
+  sheet_name: string;
+  mode: string;
+  target_languages: string[];
+  row_limit: number;
+}
+
+export interface StartResponse {
+  session_id: string;
+}
+
+export interface ApprovalRequest {
+  decision: "approved" | "rejected";
+}
+
+export interface SessionStateResponse {
+  session_id: string;
+  current_step: string;
+  ko_review_count: number;
+  review_count: number;
+  fail_count: number;
+  cost_summary: CostSummary | null;
+  logs: string[];
+}
+
+/* ── Domain Types ── */
+export interface CostSummary {
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost_usd: number;
+}
+
+export interface KoReviewItem {
+  key: string;
+  original: string;
+  revised: string;
+  comment: string;
+  has_issue: boolean;
+}
+
+export interface ReviewItem {
+  key: string;
+  lang: string;
+  original_ko: string;
+  old_translation: string;
+  translated: string;
+  reason: string;
+  status: string;
+}
+
+export interface FailedRow {
+  key: string;
+  lang: string;
+  error: string;
+}
+
+/* ── SSE Event Types ── */
+export type SSEEventType =
+  | "node_update"
+  | "ko_review_ready"
+  | "final_review_ready"
+  | "done"
+  | "error"
+  | "ping";
+
+export interface NodeUpdateData {
+  node: string;
+  step: string;
+  logs: string[];
+}
+
+export interface KoReviewReadyData {
+  results: KoReviewItem[];
+  count: number;
+  report: Record<string, unknown>[] | null;
+}
+
+export interface FinalReviewReadyData {
+  review_results: ReviewItem[];
+  failed_rows: FailedRow[];
+  report: Record<string, unknown>[] | null;
+  cost: { input_tokens: number; output_tokens: number };
+}
+
+/* ── Config ── */
+export interface AppConfig {
+  saved_url?: string;
+  backup_folder?: string;
+}

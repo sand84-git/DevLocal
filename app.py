@@ -55,21 +55,20 @@ from utils.sheets import (
 from utils.diff_report import (
     generate_ko_diff_report,
     generate_translation_diff_report,
-    style_ko_diff,
-    style_translation_diff,
 )
 from utils.ui_components import (
     inject_custom_css,
-    render_step_indicator,
+    render_header,
+    render_footer,
     render_card_start,
     render_card_end,
-    render_sidebar_logo,
-    render_connection_badge,
-    render_app_header,
     render_done_header,
-    render_saved_url,
+    render_ko_review_table,
     render_log_terminal,
     render_metric_grid,
+    render_overall_progress,
+    render_saved_url_inline,
+    render_translation_review_table,
 )
 
 # ── 페이지 설정 ──────────────────────────────────────────────────────
@@ -172,7 +171,7 @@ def _run_translation_streaming(resume_value: str, config: dict, indicator_slot=N
                 p = _TRANS_PROGRESS[node_name]
                 st.session_state.step_progress = p
                 with indicator_slot.container():
-                    render_step_indicator("translating", progress=p)
+                    render_header("translating", progress=p)
 
             # 로그 터미널 실시간 갱신
             with log_container.container():
@@ -224,32 +223,88 @@ def _process_translation_result(result: dict):
     }
 
 
-# ── 사이드바 ─────────────────────────────────────────────────────────
+# ── 공통 상태 플래그 ──────────────────────────────────────────────────
 
-with st.sidebar:
-    render_sidebar_logo()
+is_busy = st.session_state.current_step not in ("idle", "done")
 
-    is_busy = st.session_state.current_step not in ("idle", "done")
+# ── 메인 영역 ────────────────────────────────────────────────────────
 
-    # ── 시트 연결 ──
-    st.markdown(
-        '<p class="sidebar-section-title">시트 연결</p>',
-        unsafe_allow_html=True,
-    )
+# 헤더 바 (로고 + 5단계 스텝 인디케이터)
+_header_slot = st.empty()
+_step_progress_for_header = st.session_state.get("step_progress", {})
+with _header_slot.container():
+    render_header(st.session_state.current_step, progress=_step_progress_for_header)
 
-    # URL 고정 로직
+# _indicator_slot은 스트리밍 중 실시간 업데이트에 사용 (_header_slot과 동일)
+_indicator_slot = _header_slot
+
+# ── Data Source Configuration (idle 상태에서만 카드 표시, 변수는 항상 정의) ──
+
+# 기본값 초기화 (non-idle 상태 fallback)
+selected_sheet = st.session_state.get("_last_sheet", None)
+target_langs = list(SUPPORTED_LANGUAGES.keys())
+mode = "A"
+row_limit = 0
+backup_folder = st.session_state.backup_folder
+start_button = False
+cancel_button = False
+sheet_url = st.session_state.saved_url
+
+
+if st.session_state.current_step == "idle":
+    # ── 시트 연결 로직 ──
+    sheet_names = []
+    connected = False
+
     if st.session_state.saved_url and not st.session_state.url_editing:
-        render_saved_url(st.session_state.saved_url)
-        if st.button("변경", use_container_width=True, disabled=is_busy):
+        sheet_url = st.session_state.saved_url
+        _url_is_saved = True
+    else:
+        _url_is_saved = False
+
+    if sheet_url:
+        try:
+            if (
+                st.session_state.spreadsheet is None
+                or st.session_state.get("_last_url") != sheet_url
+            ):
+                with st.spinner("시트 연결 중..."):
+                    st.session_state.spreadsheet = connect_to_sheet(sheet_url)
+                    st.session_state._last_url = sheet_url
+            sheet_names = get_worksheet_names(st.session_state.spreadsheet)
+            connected = True
+        except Exception as e:
+            connected = False
+            st.error(f"연결 실패: {e}")
+
+    # ── Connection Badge HTML ──
+    if connected:
+        _badge_html = (
+            f'<span class="connection-badge success" style="margin-left:auto;">'
+            f'&#9679; Connected &middot; {len(sheet_names)} sheets</span>'
+        )
+    else:
+        _badge_html = (
+            '<span class="connection-badge error" style="margin-left:auto;">'
+            '&#9679; Not Connected</span>'
+        )
+
+    # ── 카드 시작 ──
+    render_card_start("&#9881;", "Data Source Configuration", "")
+    # Connection badge를 카드 헤더 뒤에 표시
+    st.markdown(_badge_html, unsafe_allow_html=True)
+
+    # ── Google Sheet URL ──
+    if _url_is_saved:
+        render_saved_url_inline(st.session_state.saved_url)
+        if st.button("Change URL", use_container_width=False, disabled=is_busy):
             st.session_state.url_editing = True
             st.rerun()
-        sheet_url = st.session_state.saved_url
     else:
         sheet_url = st.text_input(
-            "구글 시트 URL",
+            "Google Sheet URL",
             value=st.session_state.saved_url,
             placeholder="https://docs.google.com/spreadsheets/d/...",
-            label_visibility="collapsed",
             disabled=is_busy,
         )
         if sheet_url and sheet_url != st.session_state.saved_url:
@@ -261,122 +316,77 @@ with st.sidebar:
         elif sheet_url and st.session_state.url_editing:
             st.session_state.url_editing = False
 
-    sheet_names = []
-    if sheet_url:
-        try:
-            if (
-                st.session_state.spreadsheet is None
-                or st.session_state.get("_last_url") != sheet_url
-            ):
-                with st.spinner("시트 연결 중..."):
-                    st.session_state.spreadsheet = connect_to_sheet(sheet_url)
-                    st.session_state._last_url = sheet_url
-            sheet_names = get_worksheet_names(st.session_state.spreadsheet)
-            render_connection_badge(True, len(sheet_names))
-        except Exception as e:
-            render_connection_badge(False)
-            st.error(f"연결 실패: {e}")
+    st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
 
-    selected_sheet = st.selectbox(
-        "작업 대상 시트",
-        options=sheet_names,
-        disabled=not sheet_names or is_busy,
-    )
+    # ── Sheet Tab + Row Limit (2 columns) ──
+    col_sheet, col_mode = st.columns(2)
 
-    st.divider()
+    with col_sheet:
+        selected_sheet = st.selectbox(
+            "Sheet Tab",
+            options=sheet_names,
+            disabled=not sheet_names or is_busy,
+        )
 
-    # ── 번역 설정 ──
-    connected = bool(sheet_names)
-    st.markdown(
-        '<p class="sidebar-section-title">번역 설정</p>',
-        unsafe_allow_html=True,
-    )
+    with col_mode:
+        mode = st.radio(
+            "Mode",
+            options=["A", "B"],
+            format_func=lambda x: "Full Translation" if x == "A" else "New Only",
+            horizontal=True,
+            help="A: 기존 번역 유무와 상관없이 전체 재번역\nB: 빈칸만 번역 (비용 절감)",
+            disabled=not connected or is_busy,
+        )
 
+    # ── Target Languages ──
     target_langs = st.multiselect(
-        "타겟 언어",
+        "Target Languages",
         options=list(SUPPORTED_LANGUAGES.keys()),
         default=list(SUPPORTED_LANGUAGES.keys()),
         format_func=lambda x: f"{x.upper()} ({SUPPORTED_LANGUAGES[x]})",
         disabled=not connected or is_busy,
     )
 
-    mode = st.radio(
-        "작업 모드",
-        options=["A", "B"],
-        format_func=lambda x: (
-            "모드 A (전체 번역/검수)" if x == "A" else "모드 B (빈칸 번역)"
-        ),
-        horizontal=True,
-        help="A: 기존 번역 유무와 상관없이 전체 재번역\nB: 빈칸만 번역 (비용 절감)",
-        disabled=not connected or is_busy,
+    # ── Advanced Settings (expander) ──
+    with st.expander("Advanced Settings"):
+        adv_col1, adv_col2 = st.columns(2)
+        with adv_col1:
+            row_limit = st.number_input(
+                "Row Limit (0 = all)",
+                min_value=0,
+                max_value=1000,
+                value=0,
+                disabled=not connected or is_busy,
+            )
+        with adv_col2:
+            backup_folder = st.text_input(
+                "Backup Folder",
+                value=st.session_state.backup_folder,
+                placeholder="./backups",
+                disabled=not connected or is_busy,
+            )
+            if backup_folder and backup_folder != st.session_state.backup_folder:
+                st.session_state.backup_folder = backup_folder
+                _save_config({"backup_folder": backup_folder})
+
+    st.markdown("<div style='height: 12px'></div>", unsafe_allow_html=True)
+
+    # ── Start Button ──
+    start_button = st.button(
+        "Start Translation",
+        type="primary",
+        disabled=(not sheet_url or not selected_sheet or not target_langs),
+        use_container_width=True,
     )
 
-    row_limit = st.number_input(
-        "테스트 행 수 제한 (0 = 전체)",
-        min_value=0,
-        max_value=1000,
-        value=0,
-        help="테스트 시 처리할 최대 행 수를 지정합니다. 0이면 전체 처리.",
-        disabled=not connected or is_busy,
+    render_card_end()
+
+elif is_busy:
+    # ── 작업 중: Cancel 버튼만 표시 ──
+    cancel_button = st.button(
+        "Cancel",
+        use_container_width=True,
     )
-
-    st.divider()
-
-    # ── 백업 폴더 설정 ──
-    st.markdown(
-        '<p class="sidebar-section-title">백업 설정</p>',
-        unsafe_allow_html=True,
-    )
-    backup_folder = st.text_input(
-        "백업 폴더",
-        value=st.session_state.backup_folder,
-        label_visibility="collapsed",
-        placeholder="./backups",
-        disabled=not connected or is_busy,
-    )
-    if backup_folder:
-        if backup_folder != st.session_state.backup_folder:
-            _save_config({"backup_folder": backup_folder})
-        st.session_state.backup_folder = backup_folder
-
-    st.divider()
-
-    if is_busy:
-        st.markdown("""<style>
-        [data-testid="stSidebar"] .stButton:last-of-type > button {
-            background: var(--error) !important;
-            border-color: var(--error) !important;
-            color: white !important;
-            font-weight: 700 !important;
-        }
-        [data-testid="stSidebar"] .stButton:last-of-type > button p,
-        [data-testid="stSidebar"] .stButton:last-of-type > button span {
-            color: white !important;
-        }
-        [data-testid="stSidebar"] .stButton:last-of-type > button:hover {
-            background: #B04040 !important;
-        }
-        </style>""", unsafe_allow_html=True)
-        cancel_button = st.button("작업 취소", use_container_width=True)
-        start_button = False
-    else:
-        start_button = st.button(
-            "작업 시작",
-            type="primary",
-            disabled=(not sheet_url or not selected_sheet or not target_langs),
-            use_container_width=True,
-        )
-        cancel_button = False
-
-# ── 메인 영역 ────────────────────────────────────────────────────────
-
-render_app_header()
-
-# 스텝 인디케이터 (프로그레스 통합, 스트리밍 중 업데이트 가능)
-_indicator_slot = st.empty()
-_step_progress = st.session_state.get("step_progress", {})
-with _indicator_slot.container():
-    render_step_indicator(st.session_state.current_step, progress=_step_progress)
 
 # ── 작업 시작 처리 ────────────────────────────────────────────────────
 
@@ -484,7 +494,7 @@ if start_button:
         # 초기 프로그레스 표시 (인디케이터 내부에 통합)
         st.session_state.step_progress = {"value": 0, "label": "데이터 확인 중"}
         with _indicator_slot.container():
-            render_step_indicator("loading", progress=st.session_state.step_progress)
+            render_header("loading", progress=st.session_state.step_progress)
 
         for event in st.session_state.graph.stream(
             initial_state, config=config, stream_mode="updates"
@@ -513,7 +523,7 @@ if start_button:
                 p = _INIT_PROGRESS[node_name]
                 st.session_state.step_progress = p
                 with _indicator_slot.container():
-                    render_step_indicator("loading", progress=p)
+                    render_header("loading", progress=p)
 
             # 로그 터미널 실시간 갱신
             with log_container.container():
@@ -600,10 +610,9 @@ if st.session_state.current_step == "ko_review":
             "한국어 사전 검수",
             f"수정 제안 {ko_count}건",
         )
-        st.dataframe(
-            style_ko_diff(st.session_state.ko_report_df),
-            use_container_width=True,
-        )
+        render_ko_review_table(st.session_state.ko_report_df)
+
+        st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
         st.download_button(
             label="한국어 변경 리포트 (CSV)",
             data=st.session_state.ko_report_csv,
@@ -754,11 +763,24 @@ if st.session_state.current_step == "final_review":
         f"변경 {review_count}건 · 실패 {fail_count}건",
     )
 
+    # Overall progress bar (success vs fail ratio)
+    # NOTE: review_count = 변경된 행 수, fail_count = 검수실패 행 수 (모집단이 다를 수 있음)
+    success_count = max(review_count - fail_count, 0)
+    render_overall_progress(success_count, fail_count)
+
     if review_count > 0:
-        st.dataframe(
-            style_translation_diff(st.session_state.translation_report_df),
-            use_container_width=True,
+        # Extract failed_keys for status badges
+        failed_keys = set()
+        if st.session_state.graph_result:
+            for fr in st.session_state.graph_result.get("failed_rows", []):
+                if "Key" in fr:
+                    failed_keys.add(fr["Key"])
+
+        render_translation_review_table(
+            st.session_state.translation_report_df,
+            failed_keys=failed_keys,
         )
+        st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
         st.download_button(
             label="번역 변경 리포트 (CSV)",
             data=st.session_state.translation_report_csv,
@@ -995,7 +1017,11 @@ if st.session_state.logs and st.session_state.current_step not in ("idle", "done
     st.markdown(
         '<p style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); '
         'text-transform: uppercase; letter-spacing: 1.2px; margin: 1.5rem 0 0.4rem; '
-        'font-family: \'DM Sans\', sans-serif;">실행 로그</p>',
+        "font-family: 'Inter', sans-serif;\">실행 로그</p>",
         unsafe_allow_html=True,
     )
     render_log_terminal(st.session_state.logs)
+
+# ── 하단 Footer ──────────────────────────────────────────────────────
+
+render_footer()

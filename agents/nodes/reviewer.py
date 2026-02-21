@@ -2,8 +2,7 @@
 
 import json
 import litellm
-import streamlit as st
-
+from backend.config import get_xai_api_key
 from agents.state import LocalizationState
 from agents.prompts import build_reviewer_prompt
 from config.constants import (
@@ -71,7 +70,7 @@ def reviewer_node(state: LocalizationState) -> dict:
         key = row.get(REQUIRED_COLUMNS["key"], "")
         original_map[key] = row
 
-    api_key = st.secrets.get("XAI_API_KEY", "")
+    api_key = get_xai_api_key()
 
     # ── Step 1~3: 정규식/Glossary 검증 + 재시도 분기 ──
     validated_items = []

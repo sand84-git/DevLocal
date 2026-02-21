@@ -2,8 +2,7 @@
 
 import json
 import litellm
-import streamlit as st
-
+from backend.config import get_xai_api_key
 from agents.state import LocalizationState
 from agents.prompts import build_translator_prompt
 from config.constants import (
@@ -68,7 +67,7 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
 
-    api_key = st.secrets.get("XAI_API_KEY", "")
+    api_key = get_xai_api_key()
 
     # 언어별 그룹핑
     retry_by_lang: dict[str, list[dict]] = {}
@@ -194,7 +193,7 @@ def translator_node(state: LocalizationState) -> dict:
     # 번역 결과 저장
     all_results = []
 
-    api_key = st.secrets.get("XAI_API_KEY", "")
+    api_key = get_xai_api_key()
 
     for lang in target_languages:
         lang_col = SUPPORTED_LANGUAGES.get(lang, "")

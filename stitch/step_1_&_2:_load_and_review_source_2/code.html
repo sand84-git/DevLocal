@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Game Localization Tool - Data Source Configuration</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0ea5e9",
+                        "primary-dark": "#0284c7",
+                        "primary-light": "#e0f2fe",
+                        "bg-page": "#f8fafc",
+                        "bg-surface": "#ffffff",
+                        "border-subtle": "#e2e8f0",
+                        "text-main": "#1e293b",
+                        "text-muted": "#64748b",
+                        "accent-teal": "#14b8a6",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    boxShadow: {
+                        "soft": "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+                        "card": "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-bg-page font-display text-text-main antialiased overflow-hidden">
+<div class="flex h-screen w-full flex-col overflow-hidden">
+<main class="flex flex-1 flex-col overflow-hidden bg-bg-page relative w-full">
+<header class="flex h-20 items-center justify-between border-b border-border-subtle bg-bg-surface px-8 shadow-sm shrink-0 z-30">
+<div class="flex items-center gap-3 min-w-[240px]">
+<div class="flex h-9 w-9 items-center justify-center rounded bg-primary text-white">
+<span class="material-symbols-outlined text-xl">translate</span>
+</div>
+<h2 class="text-lg font-bold text-text-main tracking-tight">Game Localization Tool</h2>
+</div>
+<div class="flex-1 max-w-3xl mx-auto">
+<nav aria-label="Progress">
+<ol class="flex items-center justify-between w-full" role="list">
+<li class="relative flex flex-col items-center group flex-1">
+<div class="flex items-center w-full">
+<span class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white z-10 mx-auto ring-4 ring-primary-light">
+<span class="material-symbols-outlined text-lg">edit_document</span>
+</span>
+<div class="hidden sm:block absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+</div>
+<span class="mt-2 w-full text-center text-xs font-bold text-primary">1. Load</span>
+</li>
+<li class="relative flex flex-col items-center group flex-1">
+<div class="flex items-center w-full">
+<div class="hidden sm:block absolute left-[-50%] right-[50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+<span class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-300 text-slate-400 z-10 mx-auto">
+<span class="material-symbols-outlined text-lg">chat_bubble</span>
+</span>
+<div class="hidden sm:block absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+</div>
+<span class="mt-2 w-full text-center text-xs font-medium text-text-muted">2. KR Review</span>
+</li>
+<li class="relative flex flex-col items-center group flex-1">
+<div class="flex items-center w-full">
+<div class="hidden sm:block absolute left-[-50%] right-[50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+<span class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-300 text-slate-400 z-10 mx-auto">
+<span class="material-symbols-outlined text-lg">g_translate</span>
+</span>
+<div class="hidden sm:block absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+</div>
+<span class="mt-2 w-full text-center text-xs font-medium text-text-muted">3. Translating</span>
+</li>
+<li class="relative flex flex-col items-center group flex-1">
+<div class="flex items-center w-full">
+<div class="hidden sm:block absolute left-[-50%] right-[50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+<span class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-300 text-slate-400 z-10 mx-auto">
+<span class="material-symbols-outlined text-lg">checklist</span>
+</span>
+<div class="hidden sm:block absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+</div>
+<span class="mt-2 w-full text-center text-xs font-medium text-text-muted">4. Multi-Review</span>
+</li>
+<li class="relative flex flex-col items-center group flex-1">
+<div class="flex items-center w-full">
+<div class="hidden sm:block absolute left-[-50%] right-[50%] top-4 h-[2px] bg-slate-200 -z-0"></div>
+<span class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-300 text-slate-400 z-10 mx-auto">
+<span class="material-symbols-outlined text-lg">check_circle</span>
+</span>
+</div>
+<span class="mt-2 w-full text-center text-xs font-medium text-text-muted">5. Complete</span>
+</li>
+</ol>
+</nav>
+</div>
+<div class="min-w-[240px] flex justify-end"></div>
+</header>
+<div class="flex-1 overflow-y-auto p-4 md:p-8 pb-32 flex flex-col items-center justify-center">
+<div class="w-full max-w-3xl space-y-6">
+<section class="rounded-xl border border-border-subtle bg-bg-surface p-8 shadow-soft">
+<div class="mb-8">
+<div class="flex items-center gap-4 mb-2">
+<h3 class="text-xl font-bold text-text-main">Data Source Configuration</h3>
+</div>
+<p class="text-text-muted text-sm">Connect your Google Sheet to start the localization process.</p>
+</div>
+<div class="grid grid-cols-1 gap-8">
+<div class="space-y-4">
+<div class="flex justify-between">
+<label class="block text-sm font-semibold text-text-main">Google Sheet URL</label>
+<a class="text-sm text-primary hover:text-primary-dark hover:underline flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-sm">help</span> Help
+                                </a>
+</div>
+<div class="flex rounded-lg bg-white ring-1 ring-inset ring-border-subtle focus-within:ring-2 focus-within:ring-primary shadow-sm transition-all hover:ring-slate-300">
+<div class="flex items-center pl-3">
+<img alt="Sheets" class="h-5 w-5 opacity-70" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUTqR4611swIA4vQeI__WyiAAbdng68ytwlBVg0LUOxyEVpLnOeYFifEtfXArHcrWhXg51tjJLt4F3idymF3-vNCwgv0gu5cR_PdO0VtpNgxwdUTFVSfF_z16U33SHbM1xrP5Wd_RMPShKEUXu9jpybl21XKiHuCYosPvZz5-XnkBankOR0q9OW9UqM3nte6ncfz_LOndztvFBksYyw8jyWPxRdS60e4xi04GtCfu34hkVyKJ-Gsgb6iMmGaxaULvp1AfYnMwGFQ"/>
+</div>
+<input class="block w-full border-0 bg-transparent py-3 pl-3 text-text-main placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6" placeholder="https://docs.google.com/spreadsheets/d/..." type="text"/>
+<div class="flex items-center pr-2">
+<button class="p-1.5 text-text-muted hover:text-primary rounded-md hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-xl">content_paste</span>
+</button>
+</div>
+</div>
+<p class="text-xs text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">info</span>
+                                Make sure the sheet is shared with the service account.
+                            </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="mb-2 block text-sm font-semibold text-text-main">Sheet Tab Name</label>
+<div class="relative">
+<select class="block w-full rounded-lg border-0 bg-white py-3 pl-3 pr-10 text-text-main ring-1 ring-inset ring-border-subtle focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm appearance-none transition-all hover:ring-slate-300">
+<option disabled="" selected="" value="">Select a tab...</option>
+<option>UI_Strings_v2</option>
+<option>Dialogue_Ch1</option>
+<option>Items_Inventory</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-text-muted">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<div>
+<label class="mb-2 block text-sm font-semibold text-text-main">Row Range</label>
+<div class="flex items-center gap-3">
+<div class="relative w-full">
+<input class="block w-full rounded-lg border-0 bg-white py-3 px-3 text-center text-text-main ring-1 ring-inset ring-border-subtle focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400" placeholder="Start" type="number"/>
+</div>
+<span class="text-text-muted font-medium">-</span>
+<div class="relative w-full">
+<input class="block w-full rounded-lg border-0 bg-white py-3 px-3 text-center text-text-main ring-1 ring-inset ring-border-subtle focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400" placeholder="End" type="number"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-3 text-sm text-blue-800">
+<span class="material-symbols-outlined text-blue-600 shrink-0">tips_and_updates</span>
+<div>
+<p class="font-semibold mb-1">Tip</p>
+<p class="opacity-90">Leaving the end row empty will automatically detect the last row containing data.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute bottom-0 left-0 right-0 h-20 border-t border-border-subtle bg-bg-surface px-8 shadow-[0_-4px_20px_-2px_rgba(0,0,0,0.05)] z-20 flex items-center justify-center">
+<div class="w-full flex max-w-5xl items-center justify-between">
+<span class="flex items-center gap-1 text-slate-300 text-sm font-medium cursor-not-allowed select-none px-4 py-2">
+<span class="material-symbols-outlined text-lg">arrow_back</span>
+                    Back
+                </span>
+<div class="flex items-center gap-6">
+<div class="flex items-center bg-slate-50 rounded-lg p-1 border border-border-subtle">
+<label class="relative flex cursor-pointer rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-text-muted hover:bg-white hover:shadow-sm hover:text-text-main focus:z-10 focus:outline-none transition-all has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm has-[:checked]:border-slate-200">
+<input checked="" class="sr-only" name="translation_scope" type="radio"/>
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base">playlist_add_check</span>
+                                전체 번역 (All)
+                            </span>
+</label>
+<label class="relative flex cursor-pointer rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-text-muted hover:bg-white hover:shadow-sm hover:text-text-main focus:z-10 focus:outline-none transition-all has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm has-[:checked]:border-slate-200">
+<input class="sr-only" name="translation_scope" type="radio"/>
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base">new_releases</span>
+                                신규 번역 (New)
+                            </span>
+</label>
+</div>
+<div class="h-8 w-px bg-border-subtle"></div>
+<button class="flex items-center justify-center rounded-lg border border-border-subtle bg-white p-2.5 text-text-muted hover:bg-slate-50 hover:border-slate-300 hover:text-text-main transition-all shadow-sm h-11 w-11" title="Select Folder">
+<span class="material-symbols-outlined text-xl">folder_open</span>
+</button>
+<button class="group flex items-center gap-2 rounded-lg bg-primary px-8 py-2.5 text-sm font-bold text-white hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 h-11 ring-offset-2 focus:ring-2 ring-primary">
+<span class="material-symbols-outlined text-lg animate-spin hidden">sync</span>
+                        Load Data
+                        <span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .env
+.gcp_service_account.json
 .streamlit/secrets.toml
 *.csv
 .DS_Store

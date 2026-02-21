@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+/* ── Design Tokens (Stitch 통합) ── */
+@theme {
+  --color-primary: #0ea5e9;
+  --color-primary-dark: #0284c7;
+  --color-primary-light: #e0f2fe;
+  --color-bg-page: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-surface-pale: #f1f5f9;
+  --color-border-subtle: #e2e8f0;
+  --color-text-main: #1e293b;
+  --color-text-muted: #64748b;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-diff-added-bg: #dcfce7;
+  --color-diff-added-text: #166534;
+  --color-diff-removed-bg: #fee2e2;
+  --color-diff-removed-text: #991b1b;
+  --color-step-inactive: #e2e8f0;
+  --color-step-text-inactive: #94a3b8;
+
+  --font-display: "Inter", sans-serif;
+
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05),
+    0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Custom Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Celebrate Animation (Step 5) ── */
+@keyframes celebrate {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-celebrate {
+  animation: celebrate 0.5s ease-out forwards;
+}

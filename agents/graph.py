@@ -3,7 +3,6 @@
 import re
 import json
 import litellm
-import streamlit as st
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
@@ -15,6 +14,7 @@ from agents.nodes.context_glossary import context_glossary_node
 from agents.nodes.translator import translator_node
 from agents.nodes.reviewer import reviewer_node
 from agents.nodes.writer import writer_node
+from backend.config import get_xai_api_key
 from config.constants import LLM_MODEL, REQUIRED_COLUMNS, CHUNK_SIZE, TAG_PATTERNS
 
 
@@ -30,7 +30,7 @@ def ko_review_node(state: LocalizationState) -> dict:
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
 
-    api_key = st.secrets.get("XAI_API_KEY", "")
+    api_key = get_xai_api_key()
 
     # 한국어 원문 수집
     ko_rows = []

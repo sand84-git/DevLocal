@@ -6,8 +6,7 @@ import io
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-import streamlit as st
-
+from backend.config import get_gcp_credentials
 from config.constants import FORBIDDEN_SHEETS, TOOL_STATUS_COLUMN
 
 
@@ -35,8 +34,8 @@ def _retry_with_backoff(func, *args, **kwargs):
 
 
 def connect_to_sheet(url: str) -> gspread.Spreadsheet:
-    """st.secrets 기반 인증 + 스프레드시트 연결"""
-    creds_info = st.secrets["gcp_service_account"]
+    """GCP 서비스 계정 인증 + 스프레드시트 연결"""
+    creds_info = get_gcp_credentials()
     creds = Credentials.from_service_account_info(dict(creds_info), scopes=SCOPES)
     client = gspread.authorize(creds)
     spreadsheet = _retry_with_backoff(client.open_by_url, url)
@@ -45,7 +44,7 @@ def connect_to_sheet(url: str) -> gspread.Spreadsheet:
 
 def get_bot_email() -> str:
     """서비스 계정 봇 이메일 반환"""
-    creds_info = st.secrets["gcp_service_account"]
+    creds_info = get_gcp_credentials()
     return creds_info.get("client_email", "")
 
 
@@ -123,11 +122,11 @@ def batch_update_sheet(
         _retry_with_backoff(worksheet.update_cells, cells)
 
 
-# 셀 하이라이트 색상 정의
+# 셀 하이라이트 색상 정의 — Sky Blue 팔레트
 HIGHLIGHT_COLORS = {
-    "translation": {"red": 1.0, "green": 0.976, "blue": 0.769},      # 연한 노랑
-    "review_failed": {"red": 1.0, "green": 0.922, "blue": 0.933},    # 연한 빨강
-    "completed": {"red": 0.89, "green": 0.949, "blue": 0.992},       # 연한 파랑
+    "translation": {"red": 0.878, "green": 0.961, "blue": 0.996},    # #E0F5FE primary-light
+    "review_failed": {"red": 0.996, "green": 0.886, "blue": 0.886},  # #FEE2E2 diff-removed
+    "completed": {"red": 0.863, "green": 0.988, "blue": 0.906},      # #DCFCE7 diff-added
 }
 
 
@@ -140,9 +139,9 @@ def batch_format_cells(
     변경된 셀에 배경색 일괄 적용 (Google Sheets API batch_update).
 
     updates 내 change_type 필드에 따라 색상 적용:
-    - "translation": 연한 노랑 (#FFF9C4)
-    - "review_failed": 연한 빨강 (#FFEBEE)
-    - "completed": 연한 파랑 (#E3F2FD)
+    - "translation": 연한 하늘 (#E0F5FE)
+    - "review_failed": 연한 빨강 (#FEE2E2)
+    - "completed": 연한 초록 (#DCFCE7)
     """
     headers = list(df.columns)
     requests = []

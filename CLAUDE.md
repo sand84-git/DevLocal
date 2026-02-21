@@ -1,14 +1,16 @@
 # CLAUDE.md — 게임 로컬라이징 자동화 툴
 
 ## 프로젝트 개요
-구글 스프레드시트 기반 게임 텍스트(한국어)를 AI(Grok 4.1 Fast Reasoning)로 다국어(EN, JA) 자동 번역/검수하는 Streamlit 웹앱.
+구글 스프레드시트 기반 게임 텍스트(한국어)를 AI(Grok 4.1 Fast Reasoning)로 다국어(EN, JA) 자동 번역/검수하는 웹앱.
 
 ## 기술 스택
-- **Frontend**: Streamlit (Indigo + Dark Sidebar SaaS 테마, 커스텀 CSS)
+- **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS v4 + Zustand (SPA)
+- **Backend**: FastAPI + SSE (sse-starlette) + uvicorn
 - **Agent Orchestration**: LangGraph 0.6 (8 Node + HITL 2곳 interrupt)
 - **Google Sheets**: gspread (Batch Read/Write + Exponential Backoff)
 - **LLM**: LiteLLM → xai/grok-4-1-fast-reasoning (timeout=120s)
 - **Data**: Pandas
+- **Legacy Frontend**: Streamlit (app.py — 기존 버전, 별도 실행 가능)
 
 ## 그래프 워크플로우
 ```
@@ -23,35 +25,72 @@ data_backup → context_glossary → ko_review → ko_approval(HITL 1)
 
 ## 프로젝트 구조
 ```
-app.py                    # Streamlit 메인 앱 (stream_mode="updates" 실시간 UI)
+run_dev.sh                # FastAPI(8000) + Vite(5173) 동시 실행 스크립트
+.env                      # XAI_API_KEY + GCP_SERVICE_ACCOUNT_JSON_PATH (gitignore)
+.gcp_service_account.json # GCP 서비스 계정 JSON (gitignore)
 .app_config.json          # 시트 URL/백업폴더 영속 저장 (gitignore)
+
+backend/
+  config.py               # 환경변수 기반 설정 (st.secrets 대체)
+  main.py                 # FastAPI 앱 (CORS, /api 라우터)
+  api/
+    routes.py             # 10개 REST+SSE 엔드포인트
+    schemas.py            # Pydantic 요청/응답 모델
+    session_manager.py    # 서버사이드 세션 (LRU, max 10, 그래프 인스턴스 보유)
+
+frontend/
+  src/
+    index.css             # Tailwind v4 @theme 디자인 토큰
+    App.tsx               # currentStep 기반 화면 라우팅
+    types/index.ts        # TypeScript 인터페이스
+    store/useAppStore.ts  # Zustand 전역 상태
+    api/client.ts         # 9개 API 래퍼 함수
+    hooks/useSSE.ts       # EventSource SSE 훅
+    components/           # Header, Footer, StepIndicator, ProgressSection
+    screens/              # DataSource, Loading, KoReview, Translating, FinalReview, Done
+
 agents/
   graph.py                # LangGraph StateGraph (8 Node + HITL 2곳)
   state.py                # LocalizationState TypedDict
   prompts.py              # 시스템 프롬프트 (번역/검수/한국어교정)
-  nodes/
-    data_backup.py        # Node 1: 데이터 확인 & 로그
-    context_glossary.py   # Node 2: 컨텍스트 & 글로서리 셋업
-    translator.py         # Node 3: 청크 단위 번역 (LLM)
-    reviewer.py           # Node 4: 정규식+Glossary+AI 검수 (청크 배치 LLM)
-    writer.py             # Node 5: Batch Update 목록 생성 (원본 비교 → 변경 셀만 컬러링)
+  nodes/                  # data_backup, context_glossary, translator, reviewer, writer
+
 config/
   constants.py            # 상수 (CHUNK_SIZE=15, LLM_MODEL, 태그패턴 등)
   glossary.py             # 언어별 Glossary 딕셔너리
+
 utils/
   sheets.py               # gspread 래퍼 (인증, 로드, 백업, Batch Write, Backoff, 셀 포맷팅)
   validation.py           # 정규식 태그 검증 + Glossary 후처리
   diff_report.py          # Diff 리포트 CSV 생성
-  ui_components.py        # 모던 SaaS UI 컴포넌트 (CSS, 카드, 스텝 인디케이터+프로그레스)
   cost_tracker.py         # 토큰/비용 추적 (CostTracker 클래스)
+
+app.py                    # (Legacy) Streamlit 메인 앱
+utils/ui_components.py    # (Legacy) Streamlit UI 컴포넌트
 ```
 
-## UI 아키텍처
-- **테마**: Indigo + Dark Sidebar SaaS (DM Sans/Inter 폰트)
-- **스텝 인디케이터**: 3단계 (한국어 검수 → 번역/검수 → 최종 승인) + 내부 프로그레스바 통합
-- **실시간 업데이트**: `st.empty()` + `graph.stream(stream_mode="updates")`로 노드별 프로그레스
-- **로그 터미널**: 하단 고정, 모노스페이스 CSS (translating 단계에서는 스트리밍 영역 내 표시)
-- **번역 취소**: translating 단계에서 그래프 재생성 → ko_approval interrupt로 복귀
+## UI 아키텍처 (React)
+- **디자인 시스템**: Stitch 기반 — Sky Blue (#0ea5e9) + Inter 폰트 + Material Symbols Outlined
+- **디자인 토큰 참조**: `memory/ui-design-rules.md` (색상/타이포/그림자/컴포넌트 상세)
+- **화면 흐름**: idle → loading → ko_review → translating → final_review → done
+- **스텝 인디케이터**: 5단계 (Load, KR Review, Translating, Multi-Review, Complete)
+- **실시간 업데이트**: SSE (`/api/stream/{sessionId}`) → EventSource → Zustand 상태 갱신
+- **HITL**: ko_review에서 Accept/Reject → POST `/api/approve-ko`, final_review → POST `/api/approve-final`
+- **번역 취소**: POST `/api/cancel/{sessionId}` → 그래프 재생성 → ko_review 복귀
+
+## API 엔드포인트 (FastAPI, /api prefix)
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | /connect | 시트 연결 → 시트 목록 + 봇 이메일 |
+| POST | /start | 세션 생성 + 데이터 로드 + 백업 |
+| GET | /stream/{id} | SSE 실시간 이벤트 스트림 |
+| POST | /approve-ko/{id} | HITL 1 승인/거부 → 번역 시작 |
+| POST | /approve-final/{id} | HITL 2 승인 → 시트 업데이트 / 거부 → 원복 |
+| POST | /cancel/{id} | 번역 취소 → ko_review 복귀 |
+| GET | /state/{id} | 세션 상태 조회 |
+| GET | /download/{id}/{type} | CSV 다운로드 (backup, ko_report, translation_report, failed, logs) |
+| GET | /config | 저장된 설정 조회 |
+| PUT | /config | 설정 저장 |
 
 ## 구현 워크플로우 규칙
 - 각 구현 단계(Phase)마다 바로 코드를 작성하지 않는다
@@ -79,9 +118,13 @@ utils/
 - **가격**: input $0.20/1M, output $0.50/1M, cached $0.05/1M
 
 ## Secrets 위치
-`.streamlit/secrets.toml` (gitignore 포함)
-- `XAI_API_KEY`: Grok API 키
-- `[gcp_service_account]`: Google Service Account JSON
+**React+FastAPI (현재)**:
+- `.env` — `XAI_API_KEY`, `GCP_SERVICE_ACCOUNT_JSON_PATH`
+- `.gcp_service_account.json` — GCP 서비스 계정 JSON
+- `backend/config.py`의 `get_xai_api_key()`, `get_gcp_credentials()`로 접근
+
+**Legacy Streamlit**:
+- `.streamlit/secrets.toml` — XAI_API_KEY + gcp_service_account
 
 ## 봇 이메일 (시트 편집자 초대 필요)
 `local-agent@local-488014.iam.gserviceaccount.com`
@@ -89,6 +132,18 @@ utils/
 ## 금지 시트 (UI 드롭다운 노출 금지)
 사용법, Texture, 수정금지_Common
 
+## 개발서버 실행
+```bash
+# 동시 실행 (FastAPI:8000 + Vite:5173)
+./run_dev.sh
+
+# 또는 개별 실행
+python3 -m uvicorn backend.main:app --reload --port 8000
+cd frontend && npm run dev
+```
+
 ## 참고 문서
 - PRD_v2.md: 상세 요구사항
 - DEVELOPMENT_PLAN.md: 구현 계획서
+- docs/plans/2026-02-21-react-fastapi-migration.md: React 마이그레이션 계획
+- memory/ui-design-rules.md: Stitch 기반 UI 디자인 토큰/컴포넌트 규칙

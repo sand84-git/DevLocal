@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Game Localization Tool - Multi-Review</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0ea5e9",
+                        "primary-dark": "#0284c7",
+                        "primary-light": "#e0f2fe",
+                        "background-base": "#f8fafc",
+                        "surface-white": "#ffffff",
+                        "surface-pale": "#f1f5f9",
+                        "surface-hover": "#e2e8f0",
+                        "border-subtle": "#cbd5e1",
+                        "text-main": "#0f172a",
+                        "text-secondary": "#64748b",
+                        "diff-added-bg": "#dcfce7",
+                        "diff-added-text": "#166534",
+                        "diff-removed-bg": "#fee2e2",
+                        "diff-removed-text": "#991b1b",
+                        "accent-action": "#3b82f6",
+                        "accent-action-hover": "#2563eb",
+                        "step-inactive": "#e2e8f0",
+                        "step-text-inactive": "#94a3b8",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-base font-display text-text-main min-h-screen flex flex-col overflow-x-hidden relative pb-[88px]">
+<header class="h-[80px] flex items-center border-b border-border-subtle bg-surface-white px-8 shadow-sm relative z-50">
+<div class="w-full max-w-[1400px] mx-auto flex items-center justify-between h-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-sm">
+<span class="material-symbols-outlined text-[24px]">translate</span>
+</div>
+<h1 class="text-xl font-bold text-text-main tracking-tight">Game Localization Tool</h1>
+</div>
+<div class="flex-1 flex justify-center px-8">
+<div class="flex items-center w-full max-w-3xl justify-between relative">
+<div class="absolute top-5 left-0 w-full h-[2px] bg-step-inactive -z-10"></div>
+<div class="flex flex-col items-center gap-2 relative z-10 group cursor-default">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center ring-4 ring-white shadow-sm">
+<span class="material-symbols-outlined text-[20px] font-bold">check</span>
+</div>
+<span class="text-xs font-semibold text-primary absolute -bottom-6 w-32 text-center">1. Load</span>
+</div>
+<div class="flex-1 h-[2px] bg-primary -ml-4 -mr-4 relative -z-0"></div>
+<div class="flex flex-col items-center gap-2 relative z-10 group cursor-default">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center ring-4 ring-white shadow-sm">
+<span class="material-symbols-outlined text-[20px] font-bold">check</span>
+</div>
+<span class="text-xs font-semibold text-primary absolute -bottom-6 w-32 text-center">2. KR Review</span>
+</div>
+<div class="flex-1 h-[2px] bg-primary -ml-4 -mr-4 relative -z-0"></div>
+<div class="flex flex-col items-center gap-2 relative z-10 group cursor-default">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center ring-4 ring-white shadow-sm">
+<span class="material-symbols-outlined text-[20px] font-bold">check</span>
+</div>
+<span class="text-xs font-semibold text-primary absolute -bottom-6 w-32 text-center">3. Translating</span>
+</div>
+<div class="flex-1 h-[2px] bg-primary -ml-4 -mr-4 relative -z-0"></div>
+<div class="flex flex-col items-center gap-2 relative z-10 group cursor-default">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center ring-4 ring-white shadow-sm">
+<span class="material-symbols-outlined text-[20px]">rate_review</span>
+</div>
+<span class="text-xs font-bold text-text-main absolute -bottom-6 w-32 text-center">4. Multi-Review</span>
+</div>
+<div class="flex-1 h-[2px] bg-step-inactive -ml-4 -mr-4 relative -z-0"></div>
+<div class="flex flex-col items-center gap-2 relative z-10 group cursor-default">
+<div class="w-10 h-10 rounded-full bg-white border-2 border-step-inactive text-step-text-inactive flex items-center justify-center ring-4 ring-white">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+</div>
+<span class="text-xs font-medium text-step-text-inactive absolute -bottom-6 w-32 text-center">5. Complete</span>
+</div>
+</div>
+</div>
+<div class="w-[200px] hidden xl:block"></div>
+</div>
+</header>
+<main class="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-8 gap-8 mt-4">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h1 class="text-3xl font-bold text-text-main tracking-tight">Translation Review</h1>
+<span class="px-3 py-1 rounded-full bg-primary-light text-primary-dark text-xs font-bold border border-primary/20">Step 4 of 5</span>
+</div>
+<p class="text-text-secondary text-base max-w-2xl">Review AI-generated translations against the source (Korean). Confirm changes before exporting to game engine format.</p>
+</div>
+<button class="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle bg-white hover:bg-surface-pale text-text-secondary hover:text-accent-action transition-colors font-semibold text-sm shadow-sm h-10">
+<span class="material-symbols-outlined text-[20px]">download</span>
+                Download CSV Backup
+            </button>
+</div>
+<div class="w-full bg-white border border-border-subtle rounded-xl p-6 flex flex-col lg:flex-row items-center gap-8 shadow-sm">
+<div class="flex-1 w-full space-y-4">
+<div class="flex justify-between items-end">
+<div>
+<span class="text-text-main font-bold text-lg">Overall Progress</span>
+<span class="ml-2 text-text-secondary text-sm font-medium">1,240 strings total</span>
+</div>
+<span class="text-primary font-bold text-3xl tracking-tight">85%</span>
+</div>
+<div class="h-4 w-full bg-surface-pale rounded-full overflow-hidden border border-border-subtle/50">
+<div class="h-full bg-primary w-[85%] rounded-full shadow-[0_0_12px_rgba(14,165,233,0.4)] relative overflow-hidden">
+<div class="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
+</div>
+</div>
+</div>
+<div class="h-12 w-[1px] bg-border-subtle hidden lg:block"></div>
+<div class="flex w-full lg:w-auto gap-4 sm:gap-8 justify-between lg:justify-start">
+<div class="flex flex-col items-center lg:items-start min-w-[80px]">
+<div class="text-2xl font-bold text-text-main">1,054</div>
+<div class="flex items-center gap-1.5 mt-0.5">
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<span class="text-xs text-text-secondary font-semibold uppercase tracking-wide">Done</span>
+</div>
+</div>
+<div class="flex flex-col items-center lg:items-start min-w-[80px]">
+<div class="text-2xl font-bold text-amber-500">186</div>
+<div class="flex items-center gap-1.5 mt-0.5">
+<div class="w-2 h-2 rounded-full bg-amber-500"></div>
+<span class="text-xs text-text-secondary font-semibold uppercase tracking-wide">Pending</span>
+</div>
+</div>
+<div class="flex flex-col items-center lg:items-start min-w-[80px]">
+<div class="text-2xl font-bold text-red-500">0</div>
+<div class="flex items-center gap-1.5 mt-0.5">
+<div class="w-2 h-2 rounded-full bg-red-500"></div>
+<span class="text-xs text-text-secondary font-semibold uppercase tracking-wide">Errors</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col h-full min-h-[600px]">
+<div class="w-full bg-white border border-border-subtle rounded-xl overflow-hidden flex flex-col shadow-md h-full">
+<div class="p-4 border-b border-border-subtle bg-surface-pale/50 flex flex-wrap justify-between items-center gap-4">
+<div class="flex items-center gap-4">
+<div class="relative group">
+<button class="flex items-center gap-2 bg-white border border-border-subtle px-3 py-1.5 rounded-lg hover:border-primary transition-colors shadow-sm">
+<span class="text-xl">🇺🇸</span>
+<span class="text-text-main font-bold text-sm">English (US)</span>
+<span class="material-symbols-outlined text-text-secondary text-lg">expand_more</span>
+</button>
+</div>
+<div class="h-6 w-[1px] bg-border-subtle"></div>
+<h3 class="text-text-main font-bold text-lg hidden sm:block">Review Drafts</h3>
+<span class="bg-white px-2 py-0.5 rounded text-xs text-text-secondary border border-border-subtle font-medium shadow-sm">150 Strings</span>
+</div>
+<div class="flex gap-3 items-center">
+<div class="flex items-center bg-white rounded-lg border border-border-subtle p-0.5 shadow-sm mr-2">
+<button class="w-8 h-8 flex items-center justify-center rounded text-text-secondary hover:text-primary hover:bg-surface-pale transition-colors disabled:opacity-30" title="Previous Page">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<span class="text-sm text-text-main font-bold px-3 min-w-[80px] text-center">1 / 15</span>
+<button class="w-8 h-8 flex items-center justify-center rounded text-text-secondary hover:text-primary hover:bg-surface-pale transition-colors" title="Next Page">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+<button class="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-light/50 border border-primary/20 text-primary-dark text-xs font-bold hover:bg-primary-light transition-colors shadow-sm uppercase tracking-wide">
+<span class="material-symbols-outlined text-[16px]">done_all</span>
+                            Approve Page
+                        </button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 px-6 py-3 bg-surface-pale border-b border-border-subtle text-xs font-bold text-text-secondary uppercase tracking-wider sticky top-0 z-10">
+<div class="col-span-1">AI Note</div>
+<div class="col-span-3">Source (KR)</div>
+<div class="col-span-3">Previous Translation</div>
+<div class="col-span-4">New Translation (Draft)</div>
+<div class="col-span-1 text-center">Action</div>
+</div>
+<div class="overflow-y-auto custom-scrollbar flex-1 bg-white min-h-[500px]">
+<div class="grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-colors group">
+<div class="col-span-1">
+<button class="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold text-text-secondary hover:text-primary hover:bg-primary-light/50 transition-all group-hover:visible w-fit">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="hidden xl:inline">View Note</span>
+</button>
+</div>
+<div class="col-span-3 text-text-main text-sm font-medium leading-relaxed">게임 시작</div>
+<div class="col-span-3">
+<span class="text-diff-removed-text bg-diff-removed-bg/40 px-1.5 py-0.5 rounded text-sm leading-relaxed line-through decoration-diff-removed-text/40">Start</span>
+</div>
+<div class="col-span-4 text-text-main text-sm leading-relaxed">
+<span class="bg-diff-added-bg text-diff-added-text px-1.5 py-0.5 rounded border border-diff-added-text/20 font-semibold">Game Start</span>
+</div>
+<div class="col-span-1 flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-primary transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-red-500 transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-colors group relative">
+<div class="col-span-1 relative">
+<button class="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-bold text-accent-action bg-accent-action/10 hover:bg-accent-action/20 transition-all w-fit ring-1 ring-accent-action/20">
+<span class="material-symbols-outlined text-[18px] fill-current">chat_bubble</span>
+<span class="hidden xl:inline">View Note</span>
+</button>
+<div class="absolute left-0 top-10 mt-2 w-72 bg-white border border-border-subtle shadow-xl rounded-lg p-4 z-50 text-left">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-accent-action text-xl bg-accent-action/10 p-1 rounded-md">smart_toy</span>
+<div>
+<h4 class="text-sm font-bold text-text-main mb-1">AI Suggestion</h4>
+<p class="text-xs text-text-secondary leading-relaxed">Added "completely" to emphasize the critical state based on game context provided.</p>
+</div>
+</div>
+<div class="absolute left-4 -top-[7px] w-3 h-3 bg-white border-t border-l border-border-subtle rotate-45"></div>
+</div>
+</div>
+<div class="col-span-3 text-text-main text-sm font-medium leading-relaxed">인벤토리가 가득 찼습니다.</div>
+<div class="col-span-3 text-text-secondary text-sm leading-relaxed">Inventory full.</div>
+<div class="col-span-4 text-text-main text-sm leading-relaxed">
+                            Inventory is <span class="bg-diff-added-bg text-diff-added-text px-1.5 py-0.5 rounded border border-diff-added-text/20 font-semibold">completely</span> full.
+                        </div>
+<div class="col-span-1 flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-primary transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-red-500 transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-colors group">
+<div class="col-span-1">
+<button class="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold text-text-secondary hover:text-primary hover:bg-primary-light/50 transition-all w-fit">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="hidden xl:inline">View Note</span>
+</button>
+</div>
+<div class="col-span-3 text-text-main text-sm font-medium leading-relaxed">안녕, 낯선 사람.</div>
+<div class="col-span-3 text-text-secondary text-sm leading-relaxed">Hello stranger.</div>
+<div class="col-span-4 text-text-main text-sm leading-relaxed">
+                            Greetings, <span class="bg-diff-added-bg text-diff-added-text px-1.5 py-0.5 rounded border border-diff-added-text/20 font-semibold">Traveler</span>.
+                        </div>
+<div class="col-span-1 flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-primary transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-red-500 transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-colors group">
+<div class="col-span-1">
+<button class="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold text-text-secondary hover:text-primary hover:bg-primary-light/50 transition-all w-fit">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="hidden xl:inline">View Note</span>
+</button>
+</div>
+<div class="col-span-3 text-text-main text-sm font-medium leading-relaxed">오래된 녹슨 검입니다.</div>
+<div class="col-span-3 text-text-secondary text-sm leading-relaxed italic opacity-60">No previous translation</div>
+<div class="col-span-4 text-text-main text-sm leading-relaxed">
+                            It is an old rusty sword.
+                        </div>
+<div class="col-span-1 flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-primary transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-red-500 transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-colors group">
+<div class="col-span-1">
+<button class="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold text-text-secondary hover:text-primary hover:bg-primary-light/50 transition-all w-fit">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="hidden xl:inline">View Note</span>
+</button>
+</div>
+<div class="col-span-3 text-text-main text-sm font-medium leading-relaxed">연결 오류</div>
+<div class="col-span-3 text-text-secondary text-sm leading-relaxed">Connection Error</div>
+<div class="col-span-4 text-text-main text-sm leading-relaxed">
+                            Connection Failure
+                        </div>
+<div class="col-span-1 flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-primary transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-red-500 transition-colors bg-surface-pale">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<div class="p-3 bg-surface-pale/50 border-t border-border-subtle text-center text-xs text-text-secondary font-medium">
+                    Showing 1-5 of 150 entries
+                </div>
+</div>
+</div>
+</main>
+<div class="h-[88px] fixed bottom-0 left-0 right-0 bg-white border-t border-border-subtle px-8 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div class="max-w-[1400px] h-full mx-auto flex items-center justify-between">
+<button class="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-surface-white border border-border-subtle hover:bg-surface-pale text-text-secondary font-bold transition-colors shadow-sm text-sm h-11">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+                Back
+            </button>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<span class="text-xs font-bold text-text-secondary uppercase tracking-wider mr-1">Scope:</span>
+<div class="flex items-center gap-4 px-4 py-2 bg-surface-pale rounded-lg border border-border-subtle/50 opacity-70">
+<label class="flex items-center gap-2 cursor-not-allowed">
+<input class="w-4 h-4 text-primary border-gray-300 focus:ring-primary bg-gray-100" disabled="" name="scope" type="radio"/>
+<span class="text-sm font-medium text-text-secondary">전체 번역</span>
+</label>
+<label class="flex items-center gap-2 cursor-not-allowed">
+<input checked="" class="w-4 h-4 text-primary border-gray-300 focus:ring-primary" disabled="" name="scope" type="radio"/>
+<span class="text-sm font-medium text-text-main">신규 번역</span>
+</label>
+</div>
+</div>
+<button class="flex items-center justify-center w-11 h-11 rounded-lg border border-border-subtle bg-white hover:bg-surface-pale text-text-secondary transition-colors shadow-sm" title="Open Folder">
+<span class="material-symbols-outlined text-[22px]">folder_open</span>
+</button>
+<button class="flex items-center gap-2 px-8 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold transition-all shadow-lg shadow-primary/25 hover:shadow-primary/40 text-sm h-11">
+                    Confirm &amp; Next Step
+                    <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+        }
+    </style>
+
+</body></html>
