@@ -25,6 +25,7 @@ export default function Footer({
 }: FooterProps) {
   const currentStep = useAppStore((s) => s.currentStep);
   const mode = useAppStore((s) => s.mode);
+  const setMode = useAppStore((s) => s.setMode);
 
   const isIdle = currentStep === "idle";
 
@@ -73,7 +74,7 @@ export default function Footer({
                 name="translation_scope"
                 checked={mode === "A"}
                 disabled={!isIdle}
-                readOnly={!isIdle}
+                onChange={() => setMode("A")}
                 className="w-4 h-4 text-primary border-slate-300 focus:ring-primary"
               />
               <span className="text-sm font-medium text-text-muted">
@@ -86,7 +87,7 @@ export default function Footer({
                 name="translation_scope"
                 checked={mode === "B"}
                 disabled={!isIdle}
-                readOnly={!isIdle}
+                onChange={() => setMode("B")}
                 className="w-4 h-4 text-primary border-slate-300 focus:ring-primary"
               />
               <span className="text-sm font-medium text-text-muted">

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { cancelTranslation } from "../api/client";
 import Footer from "../components/Footer";
@@ -9,13 +10,18 @@ export default function TranslatingScreen() {
   const sessionId = useAppStore((s) => s.sessionId);
   const setCurrentStep = useAppStore((s) => s.setCurrentStep);
 
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
   async function handleCancel() {
     if (!sessionId) return;
+    setCancelError(null);
     try {
       await cancelTranslation(sessionId);
       setCurrentStep("ko_review");
-    } catch {
-      // fallback
+    } catch (e) {
+      setCancelError(
+        `Cancel failed: ${e instanceof Error ? e.message : "Unknown error. Please try again."}`,
+      );
     }
   }
 
@@ -52,6 +58,20 @@ export default function TranslatingScreen() {
               </div>
             </div>
           </section>
+
+          {/* Cancel error */}
+          {cancelError && (
+            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {cancelError}
+              <button
+                onClick={() => setCancelError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+          )}
 
           {/* Log terminal */}
           <section className="rounded-xl border border-border-subtle bg-slate-900 shadow-soft overflow-hidden">

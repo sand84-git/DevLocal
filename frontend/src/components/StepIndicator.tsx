@@ -10,15 +10,19 @@ const STEPS = [
 
 const STEP_ORDER: AppStep[] = [
   "idle",
+  "loading",
   "ko_review",
   "translating",
   "final_review",
   "done",
 ];
 
+/** Map AppStep → STEPS visual index (0–4). "loading" shares index 0 with "idle". */
 function stepIndex(step: AppStep): number {
+  if (step === "loading") return 0;
   const idx = STEP_ORDER.indexOf(step);
-  return idx === -1 ? 0 : idx;
+  // skip "loading" in count → subtract 1 for steps after it
+  return idx <= 0 ? 0 : idx - 1;
 }
 
 export default function StepIndicator({
@@ -27,15 +31,13 @@ export default function StepIndicator({
   currentStep: AppStep;
 }) {
   const activeIdx = stepIndex(currentStep);
-  // loading is still step 0 (Load)
-  const displayIdx = currentStep === "loading" ? 0 : activeIdx;
 
   return (
     <nav aria-label="Progress" className="flex-1 max-w-3xl mx-auto">
       <ol className="flex items-center justify-between w-full" role="list">
         {STEPS.map((step, i) => {
-          const isCompleted = i < displayIdx;
-          const isCurrent = i === displayIdx;
+          const isCompleted = i < activeIdx;
+          const isCurrent = i === activeIdx;
           const isLast = i === STEPS.length - 1;
 
           return (

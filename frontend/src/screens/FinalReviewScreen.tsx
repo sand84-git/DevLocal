@@ -20,6 +20,7 @@ export default function FinalReviewScreen() {
 
   const [page, setPage] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Filter by language
   const langItems = useMemo(
@@ -60,13 +61,16 @@ export default function FinalReviewScreen() {
   async function handleFinalApproval(decision: "approved" | "rejected") {
     if (!sessionId) return;
     setSubmitting(true);
+    setError(null);
     try {
       const res = await approveFinal(sessionId, { decision });
       setTranslationsApplied(res.translations_applied ?? false);
       setCellsUpdated(res.updates_count ?? 0);
       setCurrentStep("done");
-    } catch {
-      // TODO
+    } catch (e) {
+      setError(
+        `Final approval failed: ${e instanceof Error ? e.message : "Unknown error. Please try again."}`,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -118,6 +122,20 @@ export default function FinalReviewScreen() {
             pending={reviewResults.length - decidedCount}
             errors={failedRows.length}
           />
+
+          {/* Error banner */}
+          {error && (
+            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {error}
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+          )}
 
           {/* Review table */}
           <div className="flex flex-col min-h-[600px]">
@@ -295,7 +313,7 @@ export default function FinalReviewScreen() {
       </main>
 
       <Footer
-        onBack={() => {}}
+        onBack={() => setCurrentStep("ko_review")}
         onAction={() => handleFinalApproval("approved")}
         actionLabel={submitting ? "Processing..." : "Confirm & Next Step"}
         actionDisabled={submitting}

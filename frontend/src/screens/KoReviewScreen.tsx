@@ -78,9 +78,9 @@ export default function KoReviewScreen() {
             title="Korean Review Progress"
             total={koReviewResults.length}
             percent={
-              koReviewResults.length > 0
-                ? Math.round((decidedCount / totalIssues) * 100) || 100
-                : 0
+              totalIssues > 0
+                ? Math.round((decidedCount / totalIssues) * 100)
+                : 100
             }
             done={decidedCount}
             pending={Math.max(0, totalIssues - decidedCount)}
@@ -273,7 +273,7 @@ export default function KoReviewScreen() {
       </main>
 
       <Footer
-        onBack={() => {}}
+        onBack={() => setCurrentStep("idle")}
         onAction={handleApprove}
         actionLabel={submitting ? "Processing..." : "Confirm & Next Step"}
         actionDisabled={submitting}
