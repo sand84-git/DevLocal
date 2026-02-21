@@ -170,7 +170,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-row-fade-in {
-  animation: rowFadeIn 300ms ease-out forwards;
+  animation: rowFadeIn 300ms ease-out both;
 }
 
 /* ── Section Fade-out (progress bar 퇴장) ── */
@@ -189,6 +189,15 @@
 }
 .animate-section-fade-in {
   animation: sectionFadeIn 400ms ease-out both;
+}
+
+/* ── Content Slide-in (카드 내부 콘텐츠 교체: 우→좌, 투명 없이 슬라이드만) ── */
+@keyframes contentSlideIn {
+  from { transform: translateX(16px); }
+  to { transform: translateX(0); }
+}
+.animate-content-slide-in {
+  animation: contentSlideIn 280ms ease-out both;
 }
 
 /* ── Tabular Nums (카운트업용) ── */

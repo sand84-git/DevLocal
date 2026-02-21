@@ -31,32 +31,26 @@ export default function KoReviewWorkspace() {
   const [showIssuesOnly, setShowIssuesOnly] = useState(false);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
 
-  /* ── Mode & Transition ── */
+  /* ── Mode ── */
   const mode = currentStep === "ko_review" ? "review" : "loading";
   const prevModeRef = useRef(mode);
-  const [transition, setTransition] = useState<
-    "idle" | "exiting" | "entering"
-  >("idle");
+  const [justEnteredReview, setJustEnteredReview] = useState(false);
 
   useEffect(() => {
     if (prevModeRef.current === "loading" && mode === "review") {
       setPage(1);
       setExpandedNote(null);
-      setTransition("exiting");
-      const t1 = setTimeout(() => setTransition("entering"), 400);
-      const t2 = setTimeout(() => setTransition("idle"), 800);
+      setJustEnteredReview(true);
+      const t = setTimeout(() => setJustEnteredReview(false), 600);
       prevModeRef.current = mode;
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+      return () => clearTimeout(t);
     }
     prevModeRef.current = mode;
   }, [mode]);
 
-  const showLoadingTitle = mode === "loading" || transition === "exiting";
-  const showReviewTitle = mode === "review" && transition !== "exiting";
-  const showStats = mode === "review" && transition !== "exiting";
+  const showLoadingTitle = mode === "loading";
+  const showReviewTitle = mode === "review";
+  const showStats = mode === "review";
 
   /* ── Row drip-feed animation ── */
   const doneKeysRef = useRef(new Set<string>());
@@ -81,10 +75,10 @@ export default function KoReviewWorkspace() {
   /* ── Progress card values (loading → review 전환) ── */
   const reviewPercent = totalIssues > 0
     ? Math.round((decidedCount / totalIssues) * 100) : 100;
-  const cardPercent = mode === "review" && transition === "idle"
+  const cardPercent = mode === "review" && !justEnteredReview
     ? reviewPercent : progressPercent;
   const animPct = useCountUp(cardPercent, 500);
-  const cardLabel = mode === "review" && transition === "idle"
+  const cardLabel = mode === "review" && !justEnteredReview
     ? `Review Progress — ${decidedCount}/${totalIssues} issues decided`
     : (progressLabel || "Initializing...");
 
@@ -248,12 +242,7 @@ export default function KoReviewWorkspace() {
               <div className="overflow-hidden">
                 {showStats ? (
                   <div
-                    className={`mt-4 pt-3 border-t border-border-subtle flex items-center gap-6 ${transition === "entering" ? "animate-section-fade-in" : ""}`}
-                    style={
-                      transition === "entering"
-                        ? { animationDelay: "200ms" }
-                        : undefined
-                    }
+                    className="mt-4 pt-3 border-t border-border-subtle flex items-center gap-6"
                   >
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -309,26 +298,26 @@ export default function KoReviewWorkspace() {
             </div>
           ) : (
             <section className="rounded-xl border border-border-subtle bg-bg-surface shadow-soft overflow-hidden animate-fade-slide-up">
-              {/* Toolbar (review mode only) */}
-              {mode === "review" && (
-                <div className="border-b border-border-subtle bg-slate-50/50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-border-subtle text-primary shadow-sm">
-                        <span className="material-symbols-outlined text-lg">
-                          table_rows
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-text-main">
-                          Source Language (Korean) Review
-                        </h3>
-                        <p className="text-xs text-text-muted">
-                          Review and fix original Korean strings before
-                          translation begins.
-                        </p>
-                      </div>
+              {/* Toolbar (항상 렌더 — 지터 방지) */}
+              <div className="border-b border-border-subtle bg-slate-50/50 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-border-subtle text-primary shadow-sm">
+                      <span className="material-symbols-outlined text-lg">
+                        table_rows
+                      </span>
                     </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-text-main">
+                        Source Language (Korean) Review
+                      </h3>
+                      <p className="text-xs text-text-muted">
+                        Review and fix original Korean strings before
+                        translation begins.
+                      </p>
+                    </div>
+                  </div>
+                  {mode === "review" && (
                     <button
                       onClick={() => {
                         setShowIssuesOnly(!showIssuesOnly);
@@ -345,9 +334,9 @@ export default function KoReviewWorkspace() {
                       </span>
                       Filter: Issues Only
                     </button>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Table */}
               <div className="overflow-x-auto">
@@ -412,6 +401,9 @@ export default function KoReviewWorkspace() {
                                     >
                                       <span className="material-symbols-outlined text-lg">
                                         sticky_note_2
+                                      </span>
+                                      <span className="hidden xl:inline">
+                                        Note
                                       </span>
                                     </button>
                                     {expandedNote === row.key && (
@@ -498,7 +490,7 @@ export default function KoReviewWorkspace() {
                           );
                         })
                       : /* ── Review mode rows ── */
-                        (pageItems as typeof koReviewResults).map((item) => {
+                        (pageItems as typeof koReviewResults).map((item, idx) => {
                           const decision = koDecisions[item.key];
                           const isResolved = decision === "accepted";
                           const noIssue = !item.has_issue;
@@ -512,7 +504,8 @@ export default function KoReviewWorkspace() {
                                   : noIssue
                                     ? "opacity-45 hover:opacity-100"
                                     : "hover:bg-slate-50"
-                              }`}
+                              } ${justEnteredReview ? "animate-row-fade-in" : ""}`}
+                              style={justEnteredReview ? { animationDelay: `${idx * 40}ms` } : undefined}
                             >
                               {/* AI Note */}
                               <td className="px-4 py-3">
