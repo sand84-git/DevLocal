@@ -25,8 +25,8 @@ class Session:
         self.logs: list = []
         self.initial_state: Optional[dict] = None
         self.ko_resume_value: str = "approved"
-        # SSE event queue
-        self.event_queue: asyncio.Queue = asyncio.Queue()
+        # SSE event queue (lazy init — async 컨텍스트에서 생성)
+        self.event_queue: Optional[asyncio.Queue] = None
         # Lock for thread-safe operations
         self.lock = threading.Lock()
         # Event loop reference (set when SSE stream starts)

@@ -1,13 +1,9 @@
 import { useAppStore } from "../store/useAppStore";
-import { useSSE } from "../hooks/useSSE";
 
 export default function LoadingScreen() {
   const logs = useAppStore((s) => s.logs);
   const progressPercent = useAppStore((s) => s.progressPercent);
   const progressLabel = useAppStore((s) => s.progressLabel);
-
-  // SSE 연결 활성화
-  useSSE();
 
   return (
     <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32">

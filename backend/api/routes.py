@@ -234,6 +234,7 @@ async def api_stream(session_id: str):
 
     loop = asyncio.get_event_loop()
     session._loop = loop
+    session.event_queue = asyncio.Queue()
 
     # 백그라운드에서 초기 phase 실행
     executor.submit(_run_initial_phase, session)

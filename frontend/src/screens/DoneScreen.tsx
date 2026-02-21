@@ -15,6 +15,7 @@ export default function DoneScreen() {
     ? costSummary.input_tokens + costSummary.output_tokens
     : 0;
   const estimatedCost = costSummary?.estimated_cost_usd ?? 0;
+  const failedRows = useAppStore((s) => s.failedRows);
   const langCount = new Set(reviewResults.map((r) => r.lang)).size;
 
   return (
@@ -58,8 +59,9 @@ export default function DoneScreen() {
                   <strong className="text-text-main">
                     {langCount} languages
                   </strong>
-                  . The localization engine detected 0 critical errors and all
-                  validations passed successfully.
+                  . {failedRows.length > 0
+                    ? `${failedRows.length} items failed validation (tag mismatch after 3 retries).`
+                    : "All validations passed successfully."}
                 </p>
                 <div className="w-full bg-white/50 rounded-full h-3 mb-2 border border-sky-100">
                   <div className="bg-success h-full rounded-full w-full shadow-[0_0_10px_rgba(16,185,129,0.4)]" />

@@ -1,4 +1,5 @@
 import { useAppStore } from "./store/useAppStore";
+import { useSSE } from "./hooks/useSSE";
 import Header from "./components/Header";
 import DataSourceScreen from "./screens/DataSourceScreen";
 import LoadingScreen from "./screens/LoadingScreen";
@@ -29,6 +30,9 @@ function CurrentScreen() {
 }
 
 export default function App() {
+  // SSE를 App 레벨에서 유지 — 화면 전환에도 연결 유지
+  useSSE();
+
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-page font-display text-text-main antialiased">
       <Header />
