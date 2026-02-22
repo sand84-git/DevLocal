@@ -1,11 +1,11 @@
 import type { AppStep } from "../types";
 
 const STEPS = [
-  { label: "1. Load", icon: "edit_document" },
-  { label: "2. KR Review", icon: "chat_bubble" },
-  { label: "3. Translating", icon: "g_translate" },
-  { label: "4. Multi-Review", icon: "checklist" },
-  { label: "5. Complete", icon: "check_circle" },
+  { label: "Load", icon: "edit_document" },
+  { label: "KR Review", icon: "chat_bubble" },
+  { label: "Translating", icon: "g_translate" },
+  { label: "Multi-Review", icon: "checklist" },
+  { label: "Complete", icon: "check_circle" },
 ] as const;
 
 const STEP_ORDER: AppStep[] = [
@@ -90,9 +90,9 @@ export default function StepIndicator({
                 )}
               </div>
 
-              {/* Label */}
+              {/* Label — fixed 2-line height for consistent alignment */}
               <span
-                className={`mt-2 w-full text-center text-xs ${
+                className={`mt-2 w-full text-center text-xs leading-tight h-8 flex items-start justify-center ${
                   isCompleted
                     ? "font-semibold text-primary"
                     : isCurrent

@@ -74,6 +74,7 @@ interface AppState {
 
   /* ── Done ── */
   translationsApplied: boolean;
+  isWritingToSheet: boolean;
 
   /* ── Actions ── */
   setSheetUrl: (url: string) => void;
@@ -105,6 +106,7 @@ interface AppState {
   setProgress: (percent: number, label: string) => void;
   setSseStatus: (status: "connected" | "reconnecting" | "disconnected") => void;
   setTranslationsApplied: (applied: boolean) => void;
+  setIsWritingToSheet: (writing: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setGlossary: (glossary: Record<string, Record<string, string>>) => void;
   setCustomPrompts: (prompts: Record<string, string>) => void;
@@ -155,6 +157,7 @@ const initialState = {
   currentSheetIndex: 0,
   totalSheetCount: 0,
   translationsApplied: false,
+  isWritingToSheet: false,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -214,6 +217,7 @@ export const useAppStore = create<AppState>((set) => ({
     set({ progressPercent: percent, progressLabel: label }),
   setSseStatus: (status) => set({ sseStatus: status }),
   setTranslationsApplied: (applied) => set({ translationsApplied: applied }),
+  setIsWritingToSheet: (writing) => set({ isWritingToSheet: writing }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   setHelpOpen: (open) => set({ helpOpen: open }),
   setGlossary: (glossary) => set({ glossary }),

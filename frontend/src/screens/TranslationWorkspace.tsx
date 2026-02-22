@@ -35,6 +35,7 @@ export default function TranslationWorkspace() {
   const costSummary = useAppStore((s) => s.costSummary);
   const setTranslationsApplied = useAppStore((s) => s.setTranslationsApplied);
   const setCellsUpdated = useAppStore((s) => s.setCellsUpdated);
+  const setIsWritingToSheet = useAppStore((s) => s.setIsWritingToSheet);
   const resetTranslationState = useAppStore((s) => s.resetTranslationState);
   const reset = useAppStore((s) => s.reset);
 
@@ -216,19 +217,35 @@ export default function TranslationWorkspace() {
 
   async function handleFinalApproval(decision: "approved" | "rejected") {
     if (!sessionId) return;
-    setSubmitting(true);
     setSubmitError(null);
-    try {
-      const res = await approveFinal(sessionId, { decision });
-      setTranslationsApplied(res.translations_applied ?? false);
-      setCellsUpdated(res.updates_count ?? 0);
+
+    if (decision === "approved") {
+      // Optimistic UI: 즉시 DoneScreen으로 전환, 시트 쓰기는 백그라운드
+      setIsWritingToSheet(true);
       setCurrentStep("done");
-    } catch (e) {
-      setSubmitError(
-        `Final approval failed: ${e instanceof Error ? e.message : "Unknown error"}`,
-      );
-    } finally {
-      setSubmitting(false);
+      approveFinal(sessionId, { decision })
+        .then((res) => {
+          setTranslationsApplied(res.translations_applied ?? false);
+          setCellsUpdated(res.updates_count ?? 0);
+        })
+        .catch(() => {
+          // DoneScreen에서 에러 상태 표시 (isWritingToSheet 유지하지 않음)
+          setTranslationsApplied(false);
+        })
+        .finally(() => setIsWritingToSheet(false));
+    } else {
+      // Rejected — 시트 쓰기 없으므로 빠름, 동기 처리
+      setSubmitting(true);
+      try {
+        await approveFinal(sessionId, { decision });
+        setCurrentStep("done");
+      } catch (e) {
+        setSubmitError(
+          `Final approval failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+        );
+      } finally {
+        setSubmitting(false);
+      }
     }
   }
 

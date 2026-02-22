@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 export default function DoneScreen() {
   const sessionId = useAppStore((s) => s.sessionId);
   const translationsApplied = useAppStore((s) => s.translationsApplied);
+  const isWritingToSheet = useAppStore((s) => s.isWritingToSheet);
   const costSummary = useAppStore((s) => s.costSummary);
   const totalRows = useAppStore((s) => s.totalRows);
   const cellsUpdated = useAppStore((s) => s.cellsUpdated);
@@ -50,8 +51,17 @@ export default function DoneScreen() {
                   <h2 className="text-xl font-bold text-text-main">
                     Translation Successful
                   </h2>
-                  <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 uppercase tracking-wide">
-                    {translationsApplied ? "Pushed" : "Ready to Push"}
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide ${
+                    isWritingToSheet
+                      ? "bg-sky-50 text-sky-600 border border-sky-200"
+                      : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                  }`}>
+                    {isWritingToSheet ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-xs animate-spin360">progress_activity</span>
+                        Writing...
+                      </span>
+                    ) : translationsApplied ? "Pushed" : "Ready to Push"}
                   </span>
                 </div>
                 <p className="text-text-muted text-base leading-relaxed mb-6">
@@ -101,7 +111,7 @@ export default function DoneScreen() {
               icon="edit_note"
               iconColor="bg-purple-50 text-purple-500"
               label="Cells Updated"
-              value={String(cellsUpdated)}
+              value={isWritingToSheet ? "..." : String(cellsUpdated)}
               badge=""
             />
             <MetricCard
@@ -123,8 +133,9 @@ export default function DoneScreen() {
             window.open(getDownloadUrl(sessionId, "translation_report"));
         }}
         onAction={() => reset()}
-        actionLabel={translationsApplied ? "New Session" : "Push to Sheets"}
-        actionIcon={translationsApplied ? "arrow_forward" : "cloud_upload"}
+        actionLabel={isWritingToSheet ? "Writing to Sheet..." : translationsApplied ? "New Session" : "Push to Sheets"}
+        actionIcon={isWritingToSheet ? "progress_activity" : translationsApplied ? "arrow_forward" : "cloud_upload"}
+        actionDisabled={isWritingToSheet}
       />
     </>
   );
