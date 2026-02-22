@@ -62,7 +62,7 @@ export default function ConfirmModal({
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-text-muted hover:text-text-main transition-colors"
+          className="absolute top-4 right-4 text-text-muted hover:text-text-main transition-colors duration-200"
         >
           <span className="material-symbols-outlined text-xl">close</span>
         </button>
@@ -90,13 +90,13 @@ export default function ConfirmModal({
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 rounded-lg border border-border-subtle text-text-muted hover:bg-surface-pale font-semibold text-sm transition-colors"
+            className="px-6 py-2.5 rounded-lg border border-border-subtle text-text-muted hover:bg-surface-pale font-semibold text-sm transition-colors duration-200"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`px-6 py-2.5 rounded-lg text-white font-bold text-sm transition-all shadow-lg ${confirmBg}`}
+            className={`px-6 py-2.5 rounded-lg text-white font-bold text-sm transition-all duration-200 shadow-lg ${confirmBg}`}
           >
             {confirmLabel}
           </button>

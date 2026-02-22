@@ -138,7 +138,7 @@ function MetricCard({
   badge: string;
 }) {
   return (
-    <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl shadow-soft hover:shadow-md transition-shadow flex flex-col items-center text-center">
+    <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl shadow-soft hover:shadow-md transition-shadow duration-200 flex flex-col items-center text-center">
       <div className={`p-3 rounded-full ${iconColor} mb-3`}>
         <span className="material-symbols-outlined text-2xl">{icon}</span>
       </div>

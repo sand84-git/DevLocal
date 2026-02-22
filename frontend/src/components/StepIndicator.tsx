@@ -67,7 +67,7 @@ export default function StepIndicator({
                   </span>
                 ) : isCurrent ? (
                   <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white z-10 mx-auto ring-4 ring-primary-light shadow-sm">
-                    <span className={`material-symbols-outlined text-lg ${isProcessing ? "animate-spin360" : ""}`}>
+                    <span className={`material-symbols-outlined text-lg ${isProcessing ? "animate-pulse-scale" : ""}`}>
                       {step.icon}
                     </span>
                   </span>

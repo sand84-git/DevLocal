@@ -42,7 +42,7 @@ export default function Footer({
         {showCancel ? (
           <button
             onClick={onCancel}
-            className="px-6 py-2.5 text-text-muted hover:text-text-main font-semibold text-sm transition-colors"
+            className="px-6 py-2.5 text-text-muted hover:text-text-main font-semibold text-sm transition-colors duration-200"
           >
             Cancel
           </button>
@@ -50,7 +50,7 @@ export default function Footer({
           <button
             onClick={onBack}
             disabled={isIdle}
-            className={`rounded-xl px-6 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${
+            className={`rounded-xl px-6 py-2.5 text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${
               isIdle
                 ? "text-slate-300 cursor-not-allowed select-none"
                 : "text-text-muted hover:bg-slate-50 hover:text-text-main"
@@ -67,7 +67,7 @@ export default function Footer({
         {showDiscard && (
           <button
             onClick={onDiscard}
-            className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
             title="Discard all changes"
           >
             <span className="material-symbols-outlined text-lg">delete</span>
@@ -83,7 +83,7 @@ export default function Footer({
               !isIdle ? "opacity-70 pointer-events-none" : ""
             }`}
           >
-            <label className="relative flex cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-text-main transition-all has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm">
+            <label className="relative flex cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-text-main transition-all duration-200 has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm">
               <input
                 type="radio"
                 name="translation_scope"
@@ -99,7 +99,7 @@ export default function Footer({
                 All
               </span>
             </label>
-            <label className="relative flex cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-text-main transition-all has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm">
+            <label className="relative flex cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-text-main transition-all duration-200 has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm">
               <input
                 type="radio"
                 name="translation_scope"
@@ -121,7 +121,7 @@ export default function Footer({
 
           {/* Folder button */}
           <button
-            className="flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all shadow-sm h-12 w-12 group"
+            className="flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 shadow-sm h-12 w-12 group"
             title="Select Folder"
           >
             <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">
@@ -133,7 +133,7 @@ export default function Footer({
           {showExport && (
             <button
               onClick={onExport}
-              className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm"
+              className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors duration-200 shadow-sm text-sm"
             >
               Export JSON
             </button>
@@ -143,7 +143,7 @@ export default function Footer({
           <button
             onClick={onAction}
             disabled={actionDisabled}
-            className={`group flex items-center gap-3 rounded-xl px-8 py-3 text-base font-bold text-white transition-all active:scale-[0.98] ring-offset-2 focus:ring-2 ring-primary disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`group flex items-center gap-3 rounded-xl px-8 py-3 text-base font-bold text-white transition-all duration-200 active:scale-[0.98] ring-offset-2 focus:ring-2 ring-primary disabled:opacity-50 disabled:cursor-not-allowed ${
               actionCompleted
                 ? "bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
                 : "bg-gradient-to-r from-primary to-primary-dark hover:shadow-lg hover:shadow-primary/30"

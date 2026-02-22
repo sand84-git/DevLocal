@@ -325,7 +325,7 @@ export default function TranslationWorkspace() {
                 {sessionId && (
                   <a
                     href={getDownloadUrl(sessionId, "translation_report")}
-                    className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle bg-white hover:bg-surface-pale text-text-muted hover:text-primary transition-colors font-semibold text-sm shadow-sm h-10"
+                    className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle bg-white hover:bg-surface-pale text-text-muted hover:text-primary transition-colors duration-200 font-semibold text-sm shadow-sm h-10"
                   >
                     <span className="material-symbols-outlined text-xl">
                       download
@@ -595,7 +595,7 @@ export default function TranslationWorkspace() {
                               setSelectedLang(lang);
                               setPage(1);
                             }}
-                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 ${
                               lang === activeLang
                                 ? "bg-primary text-white shadow-sm"
                                 : "text-text-muted hover:bg-slate-100"
@@ -631,7 +631,7 @@ export default function TranslationWorkspace() {
                       <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1}
-                        className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors disabled:opacity-30"
+                        className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors duration-200 active:scale-[0.95] disabled:opacity-30"
                       >
                         <span className="material-symbols-outlined text-xl">
                           chevron_left
@@ -645,7 +645,7 @@ export default function TranslationWorkspace() {
                           setPage((p) => Math.min(totalPages, p + 1))
                         }
                         disabled={page >= totalPages}
-                        className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors disabled:opacity-30"
+                        className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors duration-200 active:scale-[0.95] disabled:opacity-30"
                       >
                         <span className="material-symbols-outlined text-xl">
                           chevron_right
@@ -657,7 +657,7 @@ export default function TranslationWorkspace() {
                     {mode === "review" && (
                       <button
                         onClick={handleApproveAllPage}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-light/50 border border-primary/20 text-primary-dark text-xs font-bold hover:bg-primary-light transition-colors shadow-sm uppercase tracking-wide"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-light/50 border border-primary/20 text-primary-dark text-xs font-bold hover:bg-primary-light transition-colors duration-200 shadow-sm uppercase tracking-wide"
                       >
                         <span className="material-symbols-outlined text-base">
                           done_all
@@ -728,7 +728,7 @@ export default function TranslationWorkspace() {
                                     expandedNote === rowKey ? null : rowKey,
                                   )
                                 }
-                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all w-fit ${
+                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 w-fit ${
                                   row.hasChange
                                     ? "text-primary-dark bg-primary-light/50 border border-primary/10 hover:bg-primary-light"
                                     : "text-text-muted hover:text-primary hover:bg-primary-light/50"
@@ -742,7 +742,7 @@ export default function TranslationWorkspace() {
                                 )}
                               </button>
                               {expandedNote === rowKey && (
-                                <div className="absolute left-0 top-full mt-1 z-20 w-80 p-3 rounded-lg bg-white border border-border-subtle shadow-lg text-xs text-text-main leading-relaxed">
+                                <div className="absolute left-0 top-full mt-1 z-20 w-80 p-3 rounded-lg bg-white border border-border-subtle shadow-lg text-xs text-text-main leading-relaxed animate-popover-in">
                                   {row.reason}
                                 </div>
                               )}
@@ -819,7 +819,7 @@ export default function TranslationWorkspace() {
                                   onClick={() =>
                                     setReviewDecision(rowKey, "accepted")
                                   }
-                                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-200 ${
                                     reviewDecisions[rowKey] === "accepted"
                                       ? "bg-primary text-white"
                                       : "bg-surface-pale text-text-muted hover:text-white hover:bg-primary"
@@ -833,7 +833,7 @@ export default function TranslationWorkspace() {
                                   onClick={() =>
                                     setReviewDecision(rowKey, "rejected")
                                   }
-                                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-200 ${
                                     reviewDecisions[rowKey] === "rejected"
                                       ? "bg-red-500 text-white"
                                       : "bg-surface-pale text-text-muted hover:text-white hover:bg-red-500"
@@ -860,7 +860,7 @@ export default function TranslationWorkspace() {
                               Pending
                             </span>
                           ) : row.rowStatus === "translating" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light/50 px-2.5 py-0.5 text-xs font-medium text-primary animate-breathe animate-badge-enter">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light/50 px-2.5 py-0.5 text-xs font-medium text-primary animate-breathe">
                               <span className="material-symbols-outlined text-sm animate-spin360">
                                 progress_activity
                               </span>
@@ -874,7 +874,7 @@ export default function TranslationWorkspace() {
                               Translated
                             </span>
                           ) : row.rowStatus === "reviewing" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-breathe animate-badge-enter">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-breathe">
                               <span className="material-symbols-outlined text-sm animate-spin360">
                                 progress_activity
                               </span>

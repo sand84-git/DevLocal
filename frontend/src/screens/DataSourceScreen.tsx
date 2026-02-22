@@ -128,7 +128,7 @@ export default function DataSourceScreen() {
                   <div className="relative" ref={helpRef}>
                     <button
                       onClick={() => setShowHelp(!showHelp)}
-                      className={`text-xs font-medium transition-colors flex items-center gap-1 group ${
+                      className={`text-xs font-medium transition-colors duration-200 flex items-center gap-1 group ${
                         showHelp
                           ? "text-primary-dark"
                           : "text-primary hover:text-primary-dark"
@@ -155,7 +155,7 @@ export default function DataSourceScreen() {
                               setCopied(true);
                               setTimeout(() => setCopied(false), 1500);
                             }}
-                            className="shrink-0 p-1.5 rounded-md text-text-muted hover:text-primary hover:bg-primary/5 transition-colors"
+                            className="shrink-0 p-1.5 rounded-md text-text-muted hover:text-primary hover:bg-primary/5 transition-colors duration-200"
                             title="Copy"
                           >
                             <span className="material-symbols-outlined text-base">
@@ -170,7 +170,7 @@ export default function DataSourceScreen() {
                     )}
                   </div>
                 </div>
-                <div className="group relative flex rounded-xl bg-white ring-1 ring-inset ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 shadow-sm transition-all hover:ring-slate-300">
+                <div className="group relative flex rounded-xl bg-white ring-1 ring-inset ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 shadow-sm transition-all duration-200 hover:ring-slate-300">
                   <div className="flex items-center pl-4 border-r border-slate-100 pr-3 bg-slate-50 rounded-l-xl">
                     <img
                       src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUTqR4611swIA4vQeI__WyiAAbdng68ytwlBVg0LUOxyEVpLnOeYFifEtfXArHcrWhXg51tjJLt4F3idymF3-vNCwgv0gu5cR_PdO0VtpNgxwdUTFVSfF_z16U33SHbM1xrP5Wd_RMPShKEUXu9jpybl21XKiHuCYosPvZz5-XnkBankOR0q9OW9UqM3nte6ncfz_LOndztvFBksYyw8jyWPxRdS60e4xi04GtCfu34hkVyKJ-Gsgb6iMmGaxaULvp1AfYnMwGFQ"
@@ -193,7 +193,7 @@ export default function DataSourceScreen() {
                     <button
                       onClick={handleConnect}
                       disabled={connecting}
-                      className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                      className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/5 transition-colors duration-200"
                     >
                       <span className="material-symbols-outlined text-xl">
                         {connecting ? "sync" : "content_paste"}
@@ -246,7 +246,7 @@ export default function DataSourceScreen() {
                       value={selectedSheet}
                       onChange={(e) => setSelectedSheet(e.target.value)}
                       disabled={sheetNames.length === 0}
-                      className="block w-full rounded-xl border-0 bg-white py-3.5 pl-4 pr-10 text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm appearance-none transition-all hover:ring-slate-300"
+                      className="block w-full rounded-xl border-0 bg-white py-3.5 pl-4 pr-10 text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm appearance-none transition-all duration-200 hover:ring-slate-300"
                     >
                       {sheetNames.length === 0 ? (
                         <option value="">Select a tab...</option>

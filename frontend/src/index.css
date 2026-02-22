@@ -160,6 +160,25 @@
   animation: dotPulse 2s ease-in-out infinite;
 }
 
+/* ══ Animation Duration Standards ══
+ * Micro-interactions (hover, press):  150ms  (Tailwind default)
+ * Element transitions (fade, color):  200ms  (duration-200)
+ * Content entrance/badge:             300ms  (duration-300)
+ * Screen-level transitions:           400ms  (duration-400)
+ * Pipeline/collapse transitions:      500ms  (duration-500)
+ * Progress bar:                       700ms  (duration-700)
+ * All use ease-out unless infinite (ease-in-out)
+ * ══════════════════════════════════ */
+
+/* ── Pulse Scale (processing icon — non-spinner) ── */
+@keyframes pulseScale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+.animate-pulse-scale {
+  animation: pulseScale 1.5s ease-in-out infinite;
+}
+
 /* ── Spin (로딩 스피너) ── */
 @keyframes spin360 {
   from { transform: rotate(0deg); }
@@ -167,6 +186,15 @@
 }
 .animate-spin360 {
   animation: spin360 1s linear infinite;
+}
+
+/* ── Popover entrance ── */
+@keyframes popoverIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-popover-in {
+  animation: popoverIn 150ms ease-out forwards;
 }
 
 /* ── Row Fade-in (drip-feed 행 등장) ── */
