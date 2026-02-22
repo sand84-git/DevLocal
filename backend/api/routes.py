@@ -3,9 +3,12 @@
 import asyncio
 import io
 import json
+import logging
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+logger = logging.getLogger("devlocal.api")
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException
@@ -80,8 +83,10 @@ def api_connect(req: ConnectRequest):
         sheet_names = get_worksheet_names(spreadsheet)
         bot_email = get_bot_email()
         _save_config({"saved_url": req.sheet_url})
+        logger.info("Sheet connected: %d tabs found", len(sheet_names))
         return ConnectResponse(sheet_names=sheet_names, bot_email=bot_email)
     except Exception as e:
+        logger.error("Sheet connection failed: %s", e)
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -135,9 +140,12 @@ def api_start(req: StartRequest):
             "_needs_retry": [],
         }
         session.current_step = "loading"
+        logger.info("Pipeline started: session=%s, sheet=%s, mode=%s",
+                     session.id, req.sheet_name, req.mode)
         return StartResponse(session_id=session.id)
     except Exception as e:
         session_manager.delete(session.id)
+        logger.error("Pipeline start failed: %s", e)
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -261,6 +269,7 @@ def _run_initial_phase(session):
             session._loop,
         )
     except Exception as e:
+        logger.error("Initial phase error for session %s: %s", session.id, e, exc_info=True)
         asyncio.run_coroutine_threadsafe(
             session.event_queue.put(("error", {"message": str(e)})),
             session._loop,
@@ -274,8 +283,14 @@ async def api_stream(session_id: str):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    logger.info("SSE stream opened: %s (step=%s)", session_id, session.current_step)
+
     loop = asyncio.get_event_loop()
     session._loop = loop
+
+    # 이전 SSE 연결 무효화 — generation counter 증가
+    session._sse_generation += 1
+    current_gen = session._sse_generation
 
     # Queue: 없을 때만 새로 생성 (SSE 재연결 시 기존 Queue 유지)
     if session.event_queue is None:
@@ -286,7 +301,7 @@ async def api_stream(session_id: str):
         executor.submit(_run_initial_phase, session)
 
     async def event_generator():
-        while True:
+        while session._sse_generation == current_gen:
             try:
                 event_type, data = await asyncio.wait_for(
                     session.event_queue.get(), timeout=300
@@ -362,6 +377,7 @@ def _run_translation_phase(session, resume_value: str):
             session._loop,
         )
     except Exception as e:
+        logger.error("Translation phase error for session %s: %s", session.id, e, exc_info=True)
         asyncio.run_coroutine_threadsafe(
             session.event_queue.put(("error", {"message": str(e)})),
             session._loop,
@@ -374,6 +390,8 @@ async def api_approve_ko(session_id: str, req: ApprovalRequest):
     session = session_manager.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    logger.info("KR approval: session=%s, decision=%s", session_id, req.decision)
 
     session.ko_resume_value = req.decision
     session.current_step = "translating"
@@ -406,6 +424,8 @@ async def api_approve_final(session_id: str, req: ApprovalRequest):
     session = session_manager.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    logger.info("Final approval: session=%s, decision=%s", session_id, req.decision)
 
     config = session.config
 
@@ -458,6 +478,8 @@ def api_cancel(session_id: str):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    logger.info("Cancel: session=%s", session_id)
+
     from agents.graph import build_graph
 
     # 그래프 재생성
@@ -495,11 +517,16 @@ def api_state(session_id: str):
     review_count = 0
     fail_count = 0
     cost_summary = None
+    total_rows = 0
+    ko_review_results = None
+    review_results_data = None
+    failed_rows_data = None
 
     if session.graph_result:
         ko_count = len(session.graph_result.get("ko_review_results", []))
         review_count = len(session.graph_result.get("review_results", []))
         fail_count = len(session.graph_result.get("failed_rows", []))
+        total_rows = len(session.graph_result.get("original_data", []))
         input_t = session.graph_result.get("total_input_tokens", 0)
         output_t = session.graph_result.get("total_output_tokens", 0)
         cost = (input_t * LLM_PRICING["input"]) + (output_t * LLM_PRICING["output"])
@@ -509,6 +536,26 @@ def api_state(session_id: str):
             "estimated_cost_usd": round(cost, 4),
         }
 
+        # 세션 복원용: HITL 대기 단계일 때 실제 데이터 포함
+        if session.current_step == "ko_review":
+            ko_results_raw = session.graph_result.get("ko_review_results", [])
+            ko_result_map = {r["key"]: r for r in ko_results_raw}
+            original_data = session.graph_result.get("original_data", [])
+            ko_review_results = []
+            for row in original_data:
+                key = row.get(REQUIRED_COLUMNS["key"], "")
+                ko_text = row.get(REQUIRED_COLUMNS["korean"], "")
+                if key in ko_result_map:
+                    ko_review_results.append(ko_result_map[key])
+                else:
+                    ko_review_results.append({
+                        "key": key, "original": ko_text,
+                        "revised": ko_text, "comment": "", "has_issue": False,
+                    })
+        elif session.current_step == "final_review":
+            review_results_data = session.graph_result.get("review_results", [])
+            failed_rows_data = session.graph_result.get("failed_rows", [])
+
     return SessionStateResponse(
         session_id=session.id,
         current_step=session.current_step,
@@ -517,6 +564,10 @@ def api_state(session_id: str):
         fail_count=fail_count,
         cost_summary=cost_summary,
         logs=session.logs,
+        ko_review_results=ko_review_results,
+        review_results=review_results_data,
+        failed_rows=failed_rows_data,
+        total_rows=total_rows,
     )
 
 

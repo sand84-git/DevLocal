@@ -52,6 +52,9 @@ interface AppState {
   progressPercent: number;
   progressLabel: string;
 
+  /* ── SSE Connection ── */
+  sseStatus: "connected" | "reconnecting" | "disconnected";
+
   /* ── Done ── */
   translationsApplied: boolean;
 
@@ -82,6 +85,7 @@ interface AppState {
   addLog: (log: string) => void;
   setLogs: (logs: string[]) => void;
   setProgress: (percent: number, label: string) => void;
+  setSseStatus: (status: "connected" | "reconnecting" | "disconnected") => void;
   setTranslationsApplied: (applied: boolean) => void;
   reset: () => void;
 }
@@ -114,6 +118,7 @@ const initialState = {
   logs: [] as string[],
   progressPercent: 0,
   progressLabel: "",
+  sseStatus: "disconnected" as const,
   translationsApplied: false,
 };
 
@@ -126,7 +131,11 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedSheet: (name) => set({ selectedSheet: name }),
   setMode: (mode) => set({ mode }),
   setRowLimit: (limit) => set({ rowLimit: limit }),
-  setSessionId: (id) => set({ sessionId: id }),
+  setSessionId: (id) => {
+    set({ sessionId: id });
+    if (id) localStorage.setItem("devlocal_session_id", id);
+    else localStorage.removeItem("devlocal_session_id");
+  },
   setCurrentStep: (step) =>
     set((s) => ({
       currentStep: step,
@@ -167,6 +176,10 @@ export const useAppStore = create<AppState>((set) => ({
   setLogs: (logs) => set({ logs }),
   setProgress: (percent, label) =>
     set({ progressPercent: percent, progressLabel: label }),
+  setSseStatus: (status) => set({ sseStatus: status }),
   setTranslationsApplied: (applied) => set({ translationsApplied: applied }),
-  reset: () => set(initialState),
+  reset: () => {
+    localStorage.removeItem("devlocal_session_id");
+    set(initialState);
+  },
 }));

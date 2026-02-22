@@ -37,3 +37,8 @@ class SessionStateResponse(BaseModel):
     fail_count: int = 0
     cost_summary: Optional[dict] = None
     logs: list = []
+    # 세션 복원용 (HITL 단계에서만 포함)
+    ko_review_results: Optional[list] = None
+    review_results: Optional[list] = None
+    failed_rows: Optional[list] = None
+    total_rows: int = 0

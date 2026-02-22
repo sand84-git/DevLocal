@@ -3,6 +3,14 @@ import StepIndicator from "./StepIndicator";
 
 export default function Header() {
   const currentStep = useAppStore((s) => s.currentStep);
+  const sseStatus = useAppStore((s) => s.sseStatus);
+
+  const statusConfig = {
+    connected: { dot: "bg-emerald-500 animate-dot-pulse", label: "Connected" },
+    reconnecting: { dot: "bg-amber-400 animate-breathe", label: "Reconnecting..." },
+    disconnected: { dot: "bg-slate-300", label: "Disconnected" },
+  };
+  const status = statusConfig[sseStatus];
 
   return (
     <header className="flex h-20 items-center justify-between border-b border-border-subtle bg-bg-surface px-8 shadow-sm shrink-0 z-30">
@@ -28,9 +36,9 @@ export default function Header() {
       <div className="min-w-[240px] flex justify-end">
         {currentStep !== "idle" && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-border-subtle">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-dot-pulse" />
+            <span className={`w-2 h-2 rounded-full ${status.dot}`} />
             <span className="text-xs font-medium text-text-muted">
-              Connected
+              {status.label}
             </span>
           </div>
         )}

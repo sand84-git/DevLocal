@@ -1,5 +1,6 @@
 """서버 사이드 세션 관리 — Graph 인스턴스 + 상태"""
 
+import logging
 import uuid
 import asyncio
 import threading
@@ -7,6 +8,8 @@ from typing import Optional
 from collections import OrderedDict
 
 from agents.graph import build_graph
+
+logger = logging.getLogger("devlocal.session")
 
 
 class Session:
@@ -31,6 +34,8 @@ class Session:
         self.lock = threading.Lock()
         # Event loop reference (set when SSE stream starts)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+        # SSE generation counter — 이전 SSE 연결 무효화용
+        self._sse_generation: int = 0
 
 
 class SessionManager:
@@ -44,8 +49,10 @@ class SessionManager:
     def create(self) -> Session:
         session = Session()
         if len(self._sessions) >= self.MAX_SESSIONS:
-            self._sessions.popitem(last=False)
+            evicted_id, _ = self._sessions.popitem(last=False)
+            logger.info("Session evicted (LRU): %s", evicted_id)
         self._sessions[session.id] = session
+        logger.info("Session created: %s (total: %d)", session.id, len(self._sessions))
         return session
 
     def get(self, session_id: str) -> Optional[Session]:
@@ -55,7 +62,9 @@ class SessionManager:
         return session
 
     def delete(self, session_id: str):
-        self._sessions.pop(session_id, None)
+        removed = self._sessions.pop(session_id, None)
+        if removed:
+            logger.info("Session deleted: %s", session_id)
 
 
 # Singleton

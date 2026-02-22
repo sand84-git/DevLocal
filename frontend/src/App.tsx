@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { useSSE } from "./hooks/useSSE";
 import { useNavigationGuard } from "./hooks/useNavigationGuard";
+import { getSessionState } from "./api/client";
 import type { AppStep } from "./types";
 import Header from "./components/Header";
 import DataSourceScreen from "./screens/DataSourceScreen";
@@ -92,12 +93,72 @@ function AnimatedScreen() {
 
 export default function App() {
   const currentStep = useAppStore((s) => s.currentStep);
+  const [restoring, setRestoring] = useState(false);
 
   // SSE를 App 레벨에서 유지 — 화면 전환에도 연결 유지
   useSSE();
 
   // 작업 중 브라우저 새로고침/탭 닫기 방지
   useNavigationGuard(currentStep !== "idle" && currentStep !== "done");
+
+  // 마운트 시 세션 복원 — localStorage에 저장된 sessionId로 상태 복구
+  useEffect(() => {
+    const savedId = localStorage.getItem("devlocal_session_id");
+    const store = useAppStore.getState();
+    if (!savedId || store.sessionId) return;
+
+    setRestoring(true);
+    // 5초 타임아웃 — 백엔드 무응답 시 idle로 복귀
+    const timeout = setTimeout(() => {
+      localStorage.removeItem("devlocal_session_id");
+      setRestoring(false);
+    }, 5000);
+
+    getSessionState(savedId)
+      .then((state) => {
+        clearTimeout(timeout);
+        const s = useAppStore.getState();
+        if (state.current_step === "done" || state.current_step === "idle") {
+          localStorage.removeItem("devlocal_session_id");
+          return;
+        }
+        // sessionId 설정 → useSSE의 useEffect 트리거 → SSE 연결
+        s.setSessionId(savedId);
+        s.setLogs(state.logs);
+        s.setTotalRows(state.total_rows ?? 0);
+
+        if (state.current_step === "ko_review" && state.ko_review_results) {
+          s.setKoReviewResults(state.ko_review_results);
+          s.setCurrentStep("ko_review");
+        } else if (state.current_step === "final_review" && state.review_results) {
+          s.setReviewResults(state.review_results);
+          if (state.failed_rows) s.setFailedRows(state.failed_rows);
+          if (state.cost_summary) s.setCostSummary(state.cost_summary);
+          s.setCurrentStep("final_review");
+        } else {
+          // loading / translating — SSE가 이어받음
+          s.setCurrentStep(state.current_step as AppStep);
+        }
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        // 세션 만료 또는 서버 미실행 — 정리 후 idle
+        localStorage.removeItem("devlocal_session_id");
+      })
+      .finally(() => setRestoring(false));
+
+    return () => clearTimeout(timeout);
+  }, []);
+
+  if (restoring) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-bg-page font-display">
+        <span className="material-symbols-outlined text-3xl text-primary animate-spin360">
+          progress_activity
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-page font-display text-text-main antialiased">

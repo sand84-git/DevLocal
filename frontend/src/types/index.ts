@@ -41,6 +41,11 @@ export interface SessionStateResponse {
   fail_count: number;
   cost_summary: CostSummary | null;
   logs: string[];
+  // 세션 복원용 (HITL 단계에서만 포함)
+  ko_review_results?: KoReviewItem[] | null;
+  review_results?: ReviewItem[] | null;
+  failed_rows?: FailedRow[] | null;
+  total_rows?: number;
 }
 
 /* ── Domain Types ── */
