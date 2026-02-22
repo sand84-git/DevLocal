@@ -28,6 +28,9 @@ class Session:
         self.logs: list = []
         self.initial_state: Optional[dict] = None
         self.ko_resume_value: str = "approved"
+        # Cancel 복구용 ko_review 캐시 (초기 phase 완료 후 저장)
+        self.cached_ko_review_results: list = []
+        self.cached_ko_tokens: tuple = (0, 0)
         # SSE event queue (lazy init — async 컨텍스트에서 생성)
         self.event_queue: Optional[asyncio.Queue] = None
         # Lock for thread-safe operations

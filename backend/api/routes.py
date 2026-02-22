@@ -220,6 +220,12 @@ def _run_initial_phase(session):
 
         # 전체 행 포함 ko_review_results 구성 (LLM은 변경 행만 반환하므로 나머지 보충)
         ko_results_raw = result.get("ko_review_results", [])
+        # Cancel 복구용 캐시 저장
+        session.cached_ko_review_results = ko_results_raw
+        session.cached_ko_tokens = (
+            result.get("total_input_tokens", 0),
+            result.get("total_output_tokens", 0),
+        )
         ko_result_map = {r["key"]: r for r in ko_results_raw}
         original_data = result.get("original_data", [])
         ko_results = []
@@ -295,6 +301,8 @@ async def api_stream(session_id: str):
                 event_type, data = await asyncio.wait_for(
                     session.event_queue.get(), timeout=300
                 )
+                if event_type == "_sse_close":
+                    break
                 yield {"event": event_type, "data": json.dumps(data, ensure_ascii=False)}
                 if event_type in ("done", "error"):
                     break
@@ -380,6 +388,9 @@ async def api_approve_ko(session_id: str, req: ApprovalRequest):
     # 백그라운드에서 번역 실행 (시트에는 Write하지 않음 — 최종 컨펌 시점에서 일괄 반영)
     loop = asyncio.get_event_loop()
     session._loop = loop
+    # Cancel 후 재진입 시 SSE 재연결 전에 호출될 수 있으므로 queue 확보
+    if session.event_queue is None:
+        session.event_queue = asyncio.Queue()
     executor.submit(_run_translation_phase, session, req.decision)
 
     return {"status": "translating"}
@@ -461,10 +472,19 @@ def api_cancel(session_id: str):
 
     logger.info("Cancel: session=%s", session_id)
 
-    # ── 이전 SSE 무효화 (race condition 방지) ──
-    # 기존 SSE event_generator 루프를 종료시켜 이전 번역 스레드의 이벤트가
-    # 프론트엔드에 도달하지 않도록 함
+    # ── 이전 SSE 즉시 종료 ──
+    # old queue에 _sse_close를 넣어 블로킹된 get()을 깨우고,
+    # generation을 증가시켜 event_generator 루프를 종료시킴
+    old_queue = session.event_queue
     session._sse_generation += 1
+    if old_queue and session._loop:
+        try:
+            asyncio.run_coroutine_threadsafe(
+                old_queue.put(("_sse_close", {})),
+                session._loop,
+            )
+        except Exception:
+            pass
     session.event_queue = None
 
     from agents.graph import build_graph
@@ -476,11 +496,26 @@ def api_cancel(session_id: str):
 
     if session.initial_state:
         try:
+            # 캐시된 ko_review 결과 주입 → ko_review_node가 LLM 호출 건너뜀
+            cancel_state = {**session.initial_state}
+            if session.cached_ko_review_results:
+                cancel_state["ko_review_results"] = session.cached_ko_review_results
+                cancel_state["total_input_tokens"] = session.cached_ko_tokens[0]
+                cancel_state["total_output_tokens"] = session.cached_ko_tokens[1]
+                # logs는 비워둠 — data_backup/context_glossary가 새로 쌓고,
+                # ko_review_node는 캐시 히트 로그 1줄만 추가
+
             for ev in session.graph.stream(
-                session.initial_state, config=session.config, stream_mode="updates"
+                cancel_state, config=session.config, stream_mode="updates"
             ):
                 if "__interrupt__" in ev:
                     break
+
+            # 세션 복구용 상태 갱신
+            state_snapshot = session.graph.get_state(session.config)
+            session.graph_result = state_snapshot.values
+            session.logs = session.graph_result.get("logs", [])
+
             session.current_step = "ko_review"
             return {"status": "ko_review"}
         except Exception as e:

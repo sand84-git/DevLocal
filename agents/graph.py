@@ -35,6 +35,17 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
     # 청크별 이벤트 emitter (없으면 무시)
     emitter = config.get("configurable", {}).get("event_emitter") if config else None
 
+    # ── Fast path: Cancel 복귀 시 캐시된 결과 재사용 (LLM 스킵) ──
+    existing_results = state.get("ko_review_results", [])
+    if existing_results:
+        logs.append(f"[한국어 검수] 캐시 결과 사용: {len(existing_results)}행 (스킵)")
+        return {
+            "ko_review_results": existing_results,
+            "total_input_tokens": total_input_tokens,
+            "total_output_tokens": total_output_tokens,
+            "logs": logs,
+        }
+
     api_key = get_xai_api_key()
 
     # 한국어 원문 수집
