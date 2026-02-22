@@ -63,6 +63,9 @@ interface AppState {
   glossary: Record<string, Record<string, string>>;
   customPrompts: Record<string, string>;
 
+  /* ── Help ── */
+  helpOpen: boolean;
+
   /* ── All Sheets Mode ── */
   allSheetsMode: boolean;
   sheetQueue: string[];
@@ -105,6 +108,7 @@ interface AppState {
   setSettingsOpen: (open: boolean) => void;
   setGlossary: (glossary: Record<string, Record<string, string>>) => void;
   setCustomPrompts: (prompts: Record<string, string>) => void;
+  setHelpOpen: (open: boolean) => void;
   setAllSheetsMode: (on: boolean) => void;
   setSheetQueue: (queue: string[]) => void;
   advanceSheetQueue: () => void;
@@ -143,6 +147,7 @@ const initialState = {
   progressLabel: "",
   sseStatus: "disconnected" as const,
   settingsOpen: false,
+  helpOpen: false,
   glossary: {} as Record<string, Record<string, string>>,
   customPrompts: {} as Record<string, string>,
   allSheetsMode: false,
@@ -210,6 +215,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSseStatus: (status) => set({ sseStatus: status }),
   setTranslationsApplied: (applied) => set({ translationsApplied: applied }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setHelpOpen: (open) => set({ helpOpen: open }),
   setGlossary: (glossary) => set({ glossary }),
   setCustomPrompts: (prompts) => set({ customPrompts: prompts }),
   setAllSheetsMode: (on) => set({ allSheetsMode: on }),

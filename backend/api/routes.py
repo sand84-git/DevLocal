@@ -675,6 +675,43 @@ def api_download(session_id: str, file_type: str):
 
 # ── Config (saved URL) ──────────────────────────────────────────────
 
+@router.get("/guide")
+def api_guide():
+    """USER_GUIDE.md를 섹션별로 파싱하여 반환 (런타임 파일 읽기)"""
+    guide_path = Path(__file__).resolve().parent.parent.parent / "docs" / "USER_GUIDE.md"
+    if not guide_path.exists():
+        raise HTTPException(status_code=404, detail="Guide not found")
+
+    content = guide_path.read_text(encoding="utf-8")
+    lines = content.split("\n")
+
+    title = ""
+    sections = []
+    current_section = None
+
+    for line in lines:
+        if line.startswith("# ") and not title:
+            title = line[2:].strip()
+        elif line.startswith("## "):
+            if current_section:
+                sections.append(current_section)
+            current_section = {
+                "id": line[3:].strip().lower().replace(" ", "-"),
+                "title": line[3:].strip(),
+                "content": "",
+            }
+        elif current_section is not None:
+            current_section["content"] += line + "\n"
+
+    if current_section:
+        sections.append(current_section)
+
+    for s in sections:
+        s["content"] = s["content"].strip()
+
+    return {"title": title, "sections": sections}
+
+
 @router.get("/config")
 def api_get_config():
     """저장된 설정 조회 (bot_email 포함, 기본값 병합)"""

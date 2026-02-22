@@ -78,6 +78,22 @@ export function getDownloadUrl(sessionId: string, fileType: string) {
   return `${BASE}/download/${sessionId}/${fileType}`;
 }
 
+/* ── Guide ── */
+export interface GuideSection {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface GuideResponse {
+  title: string;
+  sections: GuideSection[];
+}
+
+export function getGuide() {
+  return request<GuideResponse>("/guide");
+}
+
 /* ── Config ── */
 export function getConfig() {
   return request<AppConfig>("/config");

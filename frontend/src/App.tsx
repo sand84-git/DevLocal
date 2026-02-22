@@ -7,6 +7,7 @@ import { getSessionState } from "./api/client";
 import type { AppStep } from "./types";
 import Header from "./components/Header";
 import SettingsModal from "./components/SettingsModal";
+import HelpModal from "./components/HelpModal";
 import DataSourceScreen from "./screens/DataSourceScreen";
 import KoReviewWorkspace from "./screens/KoReviewWorkspace";
 import TranslationWorkspace from "./screens/TranslationWorkspace";
@@ -174,6 +175,7 @@ export default function App() {
       <Header />
       <AnimatedScreen />
       <SettingsModal />
+      <HelpModal />
     </div>
   );
 }

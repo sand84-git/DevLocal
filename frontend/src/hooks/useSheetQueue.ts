@@ -12,7 +12,7 @@ export function useSheetQueue() {
   const allSheetsMode = useAppStore((s) => s.allSheetsMode);
   const sheetQueue = useAppStore((s) => s.sheetQueue);
   const currentSheetIndex = useAppStore((s) => s.currentSheetIndex);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (currentStep !== "done" || !allSheetsMode) return;

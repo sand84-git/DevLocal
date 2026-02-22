@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { connectSheet, startPipeline, getConfig, saveConfig } from "../api/client";
 import Footer from "../components/Footer";
@@ -26,12 +26,7 @@ export default function DataSourceScreen() {
   const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showHelp, setShowHelp] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [synopsis, setSynopsis] = useState("");
-  const helpRef = useRef<HTMLDivElement>(null);
-
-  const botEmail = useAppStore((s) => s.botEmail);
 
   // Load saved config on mount
   useEffect(() => {
@@ -52,18 +47,6 @@ export default function DataSourceScreen() {
       })
       .catch(() => {});
   }, []);
-
-  // Close help popover on outside click
-  useEffect(() => {
-    if (!showHelp) return;
-    function handleMouseDown(e: MouseEvent) {
-      if (helpRef.current && !helpRef.current.contains(e.target as Node)) {
-        setShowHelp(false);
-      }
-    }
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [showHelp]);
 
   async function handleConnect() {
     if (!sheetUrl.trim()) return;
@@ -165,55 +148,9 @@ export default function DataSourceScreen() {
             <div className="grid grid-cols-1 gap-8">
               {/* Google Sheet URL */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="block text-sm font-semibold text-text-main">
-                    Google Sheet URL
-                  </label>
-                  <div className="relative" ref={helpRef}>
-                    <button
-                      onClick={() => setShowHelp(!showHelp)}
-                      className={`text-xs font-medium transition-colors duration-200 flex items-center gap-1 group ${
-                        showHelp
-                          ? "text-primary-dark"
-                          : "text-primary hover:text-primary-dark"
-                      }`}
-                    >
-                      Need help?{" "}
-                      <span className="material-symbols-outlined text-sm group-hover:translate-x-0.5 transition-transform">
-                        arrow_forward
-                      </span>
-                    </button>
-                    {showHelp && (
-                      <div className="absolute right-0 top-full mt-2 z-20 w-80 p-4 rounded-lg bg-white border border-border-subtle shadow-lg text-left animate-fade-slide-down">
-                        <p className="text-xs font-semibold text-text-main mb-2">
-                          Share your sheet with this email:
-                        </p>
-                        <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-2.5 ring-1 ring-inset ring-slate-200">
-                          <span className="text-xs text-text-main font-mono break-all flex-1">
-                            {botEmail || "Loading..."}
-                          </span>
-                          <button
-                            onClick={async () => {
-                              if (!botEmail) return;
-                              await navigator.clipboard.writeText(botEmail);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 1500);
-                            }}
-                            className="shrink-0 p-1.5 rounded-md text-text-muted hover:text-primary hover:bg-primary/5 transition-colors duration-200"
-                            title="Copy"
-                          >
-                            <span className="material-symbols-outlined text-base">
-                              {copied ? "check" : "content_copy"}
-                            </span>
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
-                          Add as <strong>Editor</strong> in Google Sheets sharing settings.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <label className="block text-sm font-semibold text-text-main">
+                  Google Sheet URL
+                </label>
                 <div className="group relative flex rounded-xl bg-white ring-1 ring-inset ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 shadow-sm transition-all duration-200 hover:ring-slate-300">
                   <div className="flex items-center pl-4 border-r border-slate-100 pr-3 bg-slate-50 rounded-l-xl">
                     <img
