@@ -15,6 +15,11 @@ export default function DataSourceScreen() {
   const setRowLimit = useAppStore((s) => s.setRowLimit);
   const setSessionId = useAppStore((s) => s.setSessionId);
   const setCurrentStep = useAppStore((s) => s.setCurrentStep);
+  const projectName = useAppStore((s) => s.projectName);
+  const setProjectName = useAppStore((s) => s.setProjectName);
+  const allSheetsMode = useAppStore((s) => s.allSheetsMode);
+  const setAllSheetsMode = useAppStore((s) => s.setAllSheetsMode);
+  const setSheetQueue = useAppStore((s) => s.setSheetQueue);
 
   const [rowStart, setRowStart] = useState(0);
   const [rowEnd, setRowEnd] = useState(0);
@@ -23,6 +28,7 @@ export default function DataSourceScreen() {
   const [error, setError] = useState("");
   const [showHelp, setShowHelp] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [synopsis, setSynopsis] = useState("");
   const helpRef = useRef<HTMLDivElement>(null);
 
   const botEmail = useAppStore((s) => s.botEmail);
@@ -39,6 +45,9 @@ export default function DataSourceScreen() {
         }
         if (cfg.bot_email) {
           setBotEmail(cfg.bot_email);
+        }
+        if (cfg.game_synopsis) {
+          setSynopsis(cfg.game_synopsis);
         }
       })
       .catch(() => {});
@@ -64,6 +73,7 @@ export default function DataSourceScreen() {
       const res = await connectSheet({ sheet_url: sheetUrl });
       setSheetNames(res.sheet_names);
       setBotEmail(res.bot_email);
+      if (res.project_name) setProjectName(res.project_name);
       if (res.sheet_names.length > 0) {
         // 이전 선택 탭이 있고 목록에 포함되면 유지, 아니면 첫 번째 선택
         if (!selectedSheet || !res.sheet_names.includes(selectedSheet)) {
@@ -78,24 +88,32 @@ export default function DataSourceScreen() {
   }
 
   async function handleLoad() {
-    if (!selectedSheet) return;
+    if (allSheetsMode) {
+      // All Sheets 모드: 시트 큐 세팅 후 첫 시트로 시작
+      setSheetQueue([...sheetNames]);
+      await startSheet(sheetNames[0]);
+      saveConfig({ saved_url: sheetUrl, saved_sheet: "__ALL_SHEETS__" }).catch(() => {});
+    } else {
+      if (!selectedSheet) return;
+      await startSheet(selectedSheet);
+      saveConfig({ saved_url: sheetUrl, saved_sheet: selectedSheet }).catch(() => {});
+    }
+  }
+
+  async function startSheet(sheetName: string) {
     setLoading(true);
     setError("");
-    // 낙관적 전환 — API 응답 전에 즉시 loading 화면으로 이동
     setCurrentStep("loading");
     try {
       const res = await startPipeline({
         sheet_url: sheetUrl,
-        sheet_name: selectedSheet,
+        sheet_name: sheetName,
         mode,
         target_languages: ["en", "ja"],
-        row_limit: rowEnd > 0 ? rowEnd - rowStart : 0,
+        row_limit: allSheetsMode ? 0 : rowEnd > 0 ? rowEnd - rowStart : 0,
       });
       setSessionId(res.session_id);
-      // 설정 영속 저장 (시트 URL + 선택된 탭)
-      saveConfig({ saved_url: sheetUrl, saved_sheet: selectedSheet }).catch(() => {});
     } catch (e) {
-      // 실패 시 idle로 복귀
       setCurrentStep("idle");
       setError(e instanceof Error ? e.message : "Failed to start");
     } finally {
@@ -113,15 +131,33 @@ export default function DataSourceScreen() {
         </div>
 
         <div className="w-full max-w-2xl space-y-8">
-          {/* Title section — above card */}
-          <div className="text-center space-y-3 mb-8">
-            <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
-              Data Source Configuration
-            </h3>
-            <p className="text-text-muted text-base max-w-lg mx-auto leading-relaxed">
-              Connect your master Google Sheet to seamlessly sync and automate
-              your localization workflow.
-            </p>
+          {/* Title section — crossfade, fixed height, no jitter */}
+          <div className="relative mb-8 h-32">
+            {/* Default state */}
+            <div className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-500 ease-out ${
+              projectName ? "opacity-0 -translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"
+            }`}>
+              <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
+                Data Source Configuration
+              </h3>
+              <p className="text-text-muted text-base max-w-lg mx-auto leading-relaxed mt-2">
+                Connect your master Google Sheet to seamlessly sync and
+                automate your localization workflow.
+              </p>
+            </div>
+            {/* Project loaded state */}
+            <div className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-500 ease-out ${
+              projectName ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"
+            }`}>
+              <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
+                <span className="text-primary">'{projectName}'</span> loaded
+              </h3>
+              {synopsis && (
+                <p className="text-text-muted text-sm max-w-md mx-auto leading-relaxed mt-2 line-clamp-3">
+                  {synopsis}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Main card — glassmorphism */}
@@ -251,19 +287,33 @@ export default function DataSourceScreen() {
                   </label>
                   <div className="relative">
                     <select
-                      value={selectedSheet}
-                      onChange={(e) => setSelectedSheet(e.target.value)}
+                      value={allSheetsMode ? "__ALL_SHEETS__" : selectedSheet}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "__ALL_SHEETS__") {
+                          setAllSheetsMode(true);
+                          setSelectedSheet(sheetNames[0] || "");
+                        } else {
+                          setAllSheetsMode(false);
+                          setSelectedSheet(val);
+                        }
+                      }}
                       disabled={sheetNames.length === 0}
                       className="block w-full rounded-xl border-0 bg-white py-3.5 pl-4 pr-10 text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm appearance-none transition-all duration-200 hover:ring-slate-300"
                     >
                       {sheetNames.length === 0 ? (
                         <option value="">Select a tab...</option>
                       ) : (
-                        sheetNames.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
+                        <>
+                          <option value="__ALL_SHEETS__">
+                            All Sheets ({sheetNames.length} tabs)
                           </option>
-                        ))
+                          {sheetNames.map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </>
                       )}
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-text-muted">
@@ -273,7 +323,7 @@ export default function DataSourceScreen() {
                     </div>
                   </div>
                 </div>
-                <div>
+                <div className={allSheetsMode ? "opacity-50 pointer-events-none" : ""}>
                   <label className="mb-2 block text-sm font-semibold text-text-main">
                     Row Range
                   </label>
@@ -284,6 +334,7 @@ export default function DataSourceScreen() {
                         value={rowStart || ""}
                         onChange={(e) => setRowStart(Number(e.target.value))}
                         placeholder="1"
+                        disabled={allSheetsMode}
                         className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
                       />
                     </div>
@@ -301,7 +352,8 @@ export default function DataSourceScreen() {
                             setRowLimit(v > 0 ? v - rowStart : 0);
                           }}
                           placeholder="&#8734;"
-                          className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
+                          disabled={allSheetsMode}
+                          className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400 placeholder:text-2xl"
                         />
                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
                           Empty = Auto-detect
@@ -331,7 +383,7 @@ export default function DataSourceScreen() {
         onAction={handleLoad}
         actionLabel={loading ? "Loading..." : "Load Data"}
         actionIcon={loading ? "sync" : "arrow_forward"}
-        actionDisabled={!selectedSheet || loading}
+        actionDisabled={(!selectedSheet && !allSheetsMode) || loading}
       />
     </>
   );

@@ -1,5 +1,6 @@
 """Google Sheets 연동 모듈 — gspread 래퍼 (Batch Read/Write, 인증)"""
 
+import re
 import time
 import datetime
 import io
@@ -46,6 +47,21 @@ def get_bot_email() -> str:
     """서비스 계정 봇 이메일 반환"""
     creds_info = get_gcp_credentials()
     return creds_info.get("client_email", "")
+
+
+def extract_project_name(spreadsheet: gspread.Spreadsheet) -> str:
+    """첫 번째 시트에서 'project:' 포함 셀을 찾아 프로젝트명 추출"""
+    try:
+        first_ws = spreadsheet.sheet1
+        all_values = _retry_with_backoff(first_ws.get_all_values)
+        for row in all_values:
+            for cell in row:
+                match = re.search(r'project\s*:\s*(.+)', cell, re.IGNORECASE)
+                if match:
+                    return match.group(1).strip()
+    except Exception:
+        pass
+    return ""
 
 
 def get_worksheet_names(spreadsheet: gspread.Spreadsheet) -> list[str]:

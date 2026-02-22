@@ -46,15 +46,12 @@ export default function Footer({
           >
             Cancel
           </button>
+        ) : isIdle ? (
+          <div className="px-6 py-2.5" />
         ) : (
           <button
             onClick={onBack}
-            disabled={isIdle}
-            className={`rounded-xl px-6 py-2.5 text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${
-              isIdle
-                ? "text-slate-300 cursor-not-allowed select-none"
-                : "text-text-muted hover:bg-slate-50 hover:text-text-main"
-            }`}
+            className="rounded-xl px-6 py-2.5 text-sm font-medium transition-colors duration-200 flex items-center gap-2 text-text-muted hover:bg-slate-50 hover:text-text-main"
           >
             <span className="material-symbols-outlined text-lg">
               arrow_back

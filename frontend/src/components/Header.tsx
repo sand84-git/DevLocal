@@ -4,6 +4,10 @@ import StepIndicator from "./StepIndicator";
 export default function Header() {
   const currentStep = useAppStore((s) => s.currentStep);
   const sseStatus = useAppStore((s) => s.sseStatus);
+  const allSheetsMode = useAppStore((s) => s.allSheetsMode);
+  const sheetQueue = useAppStore((s) => s.sheetQueue);
+  const currentSheetIndex = useAppStore((s) => s.currentSheetIndex);
+  const totalSheetCount = useAppStore((s) => s.totalSheetCount);
 
   const statusConfig = {
     connected: { dot: "bg-emerald-500 animate-dot-pulse", label: "Connected" },
@@ -30,7 +34,14 @@ export default function Header() {
       </div>
 
       {/* Step indicator */}
-      <StepIndicator currentStep={currentStep} />
+      <div className="relative flex flex-col items-center">
+        <StepIndicator currentStep={currentStep} />
+        {allSheetsMode && totalSheetCount > 1 && currentStep !== "idle" && (
+          <span className="absolute -bottom-1 text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+            Sheet {currentSheetIndex + 1}/{totalSheetCount}: {sheetQueue[currentSheetIndex] || ""}
+          </span>
+        )}
+      </div>
 
       {/* Right side: connection status */}
       <div className="min-w-[240px] flex justify-end">

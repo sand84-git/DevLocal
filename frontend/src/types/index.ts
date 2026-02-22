@@ -15,6 +15,7 @@ export interface ConnectRequest {
 export interface ConnectResponse {
   sheet_names: string[];
   bot_email: string;
+  project_name?: string;
 }
 
 export interface StartRequest {

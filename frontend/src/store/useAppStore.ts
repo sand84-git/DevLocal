@@ -19,6 +19,9 @@ interface AppState {
   mode: "A" | "B";
   rowLimit: number;
 
+  /* ── Project ── */
+  projectName: string;
+
   /* ── Session ── */
   sessionId: string | null;
   currentStep: AppStep;
@@ -60,6 +63,12 @@ interface AppState {
   glossary: Record<string, Record<string, string>>;
   customPrompts: Record<string, string>;
 
+  /* ── All Sheets Mode ── */
+  allSheetsMode: boolean;
+  sheetQueue: string[];
+  currentSheetIndex: number;
+  totalSheetCount: number;
+
   /* ── Done ── */
   translationsApplied: boolean;
 
@@ -68,6 +77,7 @@ interface AppState {
   setSheetNames: (names: string[]) => void;
   setBotEmail: (email: string) => void;
   setSelectedSheet: (name: string) => void;
+  setProjectName: (name: string) => void;
   setMode: (mode: "A" | "B") => void;
   setRowLimit: (limit: number) => void;
   setSessionId: (id: string | null) => void;
@@ -95,6 +105,9 @@ interface AppState {
   setSettingsOpen: (open: boolean) => void;
   setGlossary: (glossary: Record<string, Record<string, string>>) => void;
   setCustomPrompts: (prompts: Record<string, string>) => void;
+  setAllSheetsMode: (on: boolean) => void;
+  setSheetQueue: (queue: string[]) => void;
+  advanceSheetQueue: () => void;
   resetTranslationState: () => void;
   reset: () => void;
 }
@@ -104,6 +117,7 @@ const initialState = {
   sheetNames: [] as string[],
   botEmail: "",
   selectedSheet: "",
+  projectName: "",
   mode: "A" as const,
   rowLimit: 0,
   sessionId: null as string | null,
@@ -131,6 +145,10 @@ const initialState = {
   settingsOpen: false,
   glossary: {} as Record<string, Record<string, string>>,
   customPrompts: {} as Record<string, string>,
+  allSheetsMode: false,
+  sheetQueue: [] as string[],
+  currentSheetIndex: 0,
+  totalSheetCount: 0,
   translationsApplied: false,
 };
 
@@ -141,6 +159,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSheetNames: (names) => set({ sheetNames: names }),
   setBotEmail: (email) => set({ botEmail: email }),
   setSelectedSheet: (name) => set({ selectedSheet: name }),
+  setProjectName: (name) => set({ projectName: name }),
   setMode: (mode) => set({ mode }),
   setRowLimit: (limit) => set({ rowLimit: limit }),
   setSessionId: (id) => {
@@ -193,6 +212,10 @@ export const useAppStore = create<AppState>((set) => ({
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   setGlossary: (glossary) => set({ glossary }),
   setCustomPrompts: (prompts) => set({ customPrompts: prompts }),
+  setAllSheetsMode: (on) => set({ allSheetsMode: on }),
+  setSheetQueue: (queue) => set({ sheetQueue: queue, currentSheetIndex: 0, totalSheetCount: queue.length }),
+  advanceSheetQueue: () =>
+    set((s) => ({ currentSheetIndex: s.currentSheetIndex + 1 })),
   resetTranslationState: () =>
     set({
       reviewResults: [],

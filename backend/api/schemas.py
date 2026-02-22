@@ -11,6 +11,7 @@ class ConnectRequest(BaseModel):
 class ConnectResponse(BaseModel):
     sheet_names: list
     bot_email: str
+    project_name: str = ""
 
 
 class StartRequest(BaseModel):

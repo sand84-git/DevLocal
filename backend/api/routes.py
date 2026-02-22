@@ -39,6 +39,7 @@ from utils.sheets import (
     connect_to_sheet,
     create_backup_csv,
     ensure_tool_status_column,
+    extract_project_name,
     get_bot_email,
     get_worksheet_names,
     load_sheet_data,
@@ -82,9 +83,10 @@ def api_connect(req: ConnectRequest):
         spreadsheet = connect_to_sheet(req.sheet_url)
         sheet_names = get_worksheet_names(spreadsheet)
         bot_email = get_bot_email()
+        project_name = extract_project_name(spreadsheet)
         _save_config({"saved_url": req.sheet_url})
-        logger.info("Sheet connected: %d tabs found", len(sheet_names))
-        return ConnectResponse(sheet_names=sheet_names, bot_email=bot_email)
+        logger.info("Sheet connected: %d tabs found, project=%s", len(sheet_names), project_name or "(none)")
+        return ConnectResponse(sheet_names=sheet_names, bot_email=bot_email, project_name=project_name)
     except Exception as e:
         logger.error("Sheet connection failed: %s", e)
         raise HTTPException(status_code=400, detail=str(e))

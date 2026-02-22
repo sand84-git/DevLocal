@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { useSSE } from "./hooks/useSSE";
+import { useSheetQueue } from "./hooks/useSheetQueue";
 import { useNavigationGuard } from "./hooks/useNavigationGuard";
 import { getSessionState } from "./api/client";
 import type { AppStep } from "./types";
@@ -98,6 +99,9 @@ export default function App() {
 
   // SSE를 App 레벨에서 유지 — 화면 전환에도 연결 유지
   useSSE();
+
+  // All Sheets 모드: 시트 큐 자동 진행
+  useSheetQueue();
 
   // 작업 중 브라우저 새로고침/탭 닫기 방지
   useNavigationGuard(currentStep !== "idle" && currentStep !== "done");
