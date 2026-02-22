@@ -103,25 +103,10 @@ def api_start(req: StartRequest):
         session.worksheet = ws
         session.df = df
 
-        # Tool_Status 초기화
-        status_updates = []
-        for idx in range(len(df)):
-            current_status = df.iloc[idx].get(TOOL_STATUS_COLUMN, "")
-            if not current_status:
-                df.at[idx, TOOL_STATUS_COLUMN] = Status.WAITING
-                status_updates.append({
-                    "row_index": idx,
-                    "column_name": TOOL_STATUS_COLUMN,
-                    "value": Status.WAITING,
-                })
-        if status_updates:
-            batch_update_sheet(ws, status_updates, df)
-
-        # 백업
+        # in-memory 백업 (다운로드 엔드포인트용 — 시트에는 Write하지 않음)
         filename, csv_bytes = create_backup_csv(df, req.sheet_name)
         session.backup_filename = filename
         session.backup_csv = csv_bytes
-        save_backup_to_folder(df, req.sheet_name)
 
         # 초기 state 저장
         session.initial_state = {
@@ -393,19 +378,7 @@ async def api_approve_ko(session_id: str, req: ApprovalRequest):
     session.ko_resume_value = req.decision
     session.current_step = "translating"
 
-    # 시트 상태 업데이트
-    if session.worksheet and session.df is not None:
-        df = session.df
-        ws = session.worksheet
-        if req.decision == "approved":
-            upd = [{"row_index": i, "column_name": TOOL_STATUS_COLUMN,
-                     "value": Status.KO_REVIEW_DONE} for i in range(len(df))]
-            batch_update_sheet(ws, upd, df)
-        upd2 = [{"row_index": i, "column_name": TOOL_STATUS_COLUMN,
-                  "value": Status.TRANSLATING} for i in range(len(df))]
-        batch_update_sheet(ws, upd2, df)
-
-    # 백그라운드에서 번역 실행
+    # 백그라운드에서 번역 실행 (시트에는 Write하지 않음 — 최종 컨펌 시점에서 일괄 반영)
     loop = asyncio.get_event_loop()
     session._loop = loop
     executor.submit(_run_translation_phase, session, req.decision)
@@ -438,6 +411,11 @@ async def api_approve_final(session_id: str, req: ApprovalRequest):
 
     if req.decision == "approved":
         try:
+            # 최종 컨펌 직전 백업 생성 (시트 Write 전 안전장치)
+            if session.df is not None:
+                sheet_name = (session.initial_state or {}).get("sheet_name", "unknown")
+                save_backup_to_folder(session.df, sheet_name)
+
             result = session.graph.invoke(Command(resume="approved"), config=config)
             session.graph_result = result
             session.logs = result.get("logs", [])
@@ -460,27 +438,11 @@ async def api_approve_final(session_id: str, req: ApprovalRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     else:
-        # 거부: Tool_Status 원복
+        # 거부: 중간 Write가 없으므로 원복 불필요 — 세션 정리만 수행
         try:
             session.graph.invoke(Command(resume="rejected"), config=config)
         except Exception:
             pass
-
-        if session.worksheet and session.df is not None:
-            backup_data = (session.graph_result.get("backup_data", [])
-                          if session.graph_result else [])
-            revert_updates = []
-            for i in range(len(session.df)):
-                original_status = ""
-                if i < len(backup_data):
-                    original_status = backup_data[i].get(TOOL_STATUS_COLUMN, "")
-                revert_updates.append({
-                    "row_index": i,
-                    "column_name": TOOL_STATUS_COLUMN,
-                    "value": original_status,
-                })
-            if revert_updates:
-                batch_update_sheet(session.worksheet, revert_updates, session.df)
 
         session.current_step = "done"
         _emit_done(session)

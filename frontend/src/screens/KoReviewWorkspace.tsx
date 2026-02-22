@@ -4,6 +4,7 @@ import { approveKo, getDownloadUrl } from "../api/client";
 import { useCountUp } from "../hooks/useCountUp";
 import { highlightDiff } from "../utils/diffHighlight";
 import Footer from "../components/Footer";
+import ConfirmModal from "../components/ConfirmModal";
 
 const PAGE_SIZE = 10;
 
@@ -17,6 +18,7 @@ export default function KoReviewWorkspace() {
   const currentStep = useAppStore((s) => s.currentStep);
   const sessionId = useAppStore((s) => s.sessionId);
   const setCurrentStep = useAppStore((s) => s.setCurrentStep);
+  const reset = useAppStore((s) => s.reset);
   const progressPercent = useAppStore((s) => s.progressPercent);
   const progressLabel = useAppStore((s) => s.progressLabel);
   const originalRows = useAppStore((s) => s.originalRows);
@@ -30,20 +32,17 @@ export default function KoReviewWorkspace() {
   const [submitting, setSubmitting] = useState(false);
   const [showIssuesOnly, setShowIssuesOnly] = useState(false);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
+  const [showBackModal, setShowBackModal] = useState(false);
+  const [showUnconfirmedModal, setShowUnconfirmedModal] = useState(false);
 
   /* ── Mode ── */
   const mode = currentStep === "ko_review" ? "review" : "loading";
   const prevModeRef = useRef(mode);
-  const [justEnteredReview, setJustEnteredReview] = useState(false);
 
   useEffect(() => {
     if (prevModeRef.current === "loading" && mode === "review") {
       setPage(1);
       setExpandedNote(null);
-      setJustEnteredReview(true);
-      const t = setTimeout(() => setJustEnteredReview(false), 600);
-      prevModeRef.current = mode;
-      return () => clearTimeout(t);
     }
     prevModeRef.current = mode;
   }, [mode]);
@@ -75,10 +74,9 @@ export default function KoReviewWorkspace() {
   /* ── Progress card values (loading → review 전환) ── */
   const reviewPercent = totalIssues > 0
     ? Math.round((decidedCount / totalIssues) * 100) : 100;
-  const cardPercent = mode === "review" && !justEnteredReview
-    ? reviewPercent : progressPercent;
+  const cardPercent = mode === "review" ? reviewPercent : progressPercent;
   const animPct = useCountUp(cardPercent, 500);
-  const cardLabel = mode === "review" && !justEnteredReview
+  const cardLabel = mode === "review"
     ? `Review Progress — ${decidedCount}/${totalIssues} issues decided`
     : (progressLabel || "Initializing...");
 
@@ -119,11 +117,21 @@ export default function KoReviewWorkspace() {
     page * PAGE_SIZE,
   );
 
+  /* ── Derived: 미확인 이슈 수 ── */
+  const undecidedCount = useMemo(
+    () => issueItems.filter((item) => !koDecisions[item.key]).length,
+    [issueItems, koDecisions],
+  );
+
   /* ── Handlers ── */
-  async function handleApprove() {
+  async function doApprove() {
     if (!sessionId) return;
     setSubmitting(true);
     try {
+      // 미확인 항목은 자동으로 accepted 처리
+      for (const item of issueItems) {
+        if (!koDecisions[item.key]) setKoDecision(item.key, "accepted");
+      }
       await approveKo(sessionId, { decision: "approved" });
       setCurrentStep("translating");
     } catch {
@@ -131,6 +139,18 @@ export default function KoReviewWorkspace() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleApproveClick() {
+    if (undecidedCount > 0) {
+      setShowUnconfirmedModal(true);
+    } else {
+      doApprove();
+    }
+  }
+
+  function handleBack() {
+    setShowBackModal(true);
   }
 
   /* ── Render ── */
@@ -340,10 +360,16 @@ export default function KoReviewWorkspace() {
 
               {/* Table */}
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "100px" }} />
+                    <col />
+                    <col />
+                    <col style={{ width: "120px" }} />
+                  </colgroup>
                   <thead>
                     <tr className="border-b border-border-subtle bg-slate-50/80">
-                      <th className="px-4 py-3 text-left font-semibold text-text-muted w-[120px]">
+                      <th className="px-4 py-3 text-left font-semibold text-text-muted">
                         AI Note
                       </th>
                       <th className="px-4 py-3 text-left font-semibold text-text-muted">
@@ -352,7 +378,7 @@ export default function KoReviewWorkspace() {
                       <th className="px-4 py-3 text-left font-semibold text-text-muted">
                         AI Suggested Fix
                       </th>
-                      <th className="px-4 py-3 text-center font-semibold text-text-muted w-[100px]">
+                      <th className="px-4 py-3 text-center font-semibold text-text-muted">
                         {mode === "review" ? "Action" : "Status"}
                       </th>
                     </tr>
@@ -420,14 +446,14 @@ export default function KoReviewWorkspace() {
                               </td>
 
                               {/* Original (Korean) */}
-                              <td className="px-4 py-3 text-text-main max-w-[250px]">
+                              <td className="px-4 py-3 text-text-main">
                                 <span className="line-clamp-2">
                                   {row.korean}
                                 </span>
                               </td>
 
                               {/* AI Suggested Fix */}
-                              <td className="px-4 py-3 max-w-[250px]">
+                              <td className="px-4 py-3">
                                 {isDone ? (
                                   hasIssue ? (
                                     <span className="text-emerald-700 line-clamp-2">
@@ -449,14 +475,14 @@ export default function KoReviewWorkspace() {
                               <td className="px-4 py-3 text-center">
                                 {isDone ? (
                                   hasIssue ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-bounce-in">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-fade-in">
                                       <span className="material-symbols-outlined text-sm">
                                         edit_note
                                       </span>
                                       Revised
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-bounce-in">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-fade-in">
                                       <span className="material-symbols-outlined text-sm">
                                         check
                                       </span>
@@ -464,7 +490,7 @@ export default function KoReviewWorkspace() {
                                     </span>
                                   )
                                 ) : agentPhase === "complete" ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-bounce-in">
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-fade-in">
                                     <span className="material-symbols-outlined text-sm">
                                       check
                                     </span>
@@ -490,7 +516,7 @@ export default function KoReviewWorkspace() {
                           );
                         })
                       : /* ── Review mode rows ── */
-                        (pageItems as typeof koReviewResults).map((item, idx) => {
+                        (pageItems as typeof koReviewResults).map((item) => {
                           const decision = koDecisions[item.key];
                           const isResolved = decision === "accepted";
                           const noIssue = !item.has_issue;
@@ -504,8 +530,7 @@ export default function KoReviewWorkspace() {
                                   : noIssue
                                     ? "opacity-45 hover:opacity-100"
                                     : "hover:bg-slate-50"
-                              } ${justEnteredReview ? "animate-row-fade-in" : ""}`}
-                              style={justEnteredReview ? { animationDelay: `${idx * 40}ms` } : undefined}
+                              }`}
                             >
                               {/* AI Note */}
                               <td className="px-4 py-3">
@@ -560,13 +585,13 @@ export default function KoReviewWorkspace() {
                                     : "text-text-main"
                                 }`}
                               >
-                                {item.original}
+                                <span className="line-clamp-2">{item.original}</span>
                               </td>
 
                               {/* AI Suggested Fix — diff highlight */}
                               <td className="px-4 py-3">
                                 {item.has_issue ? (
-                                  <span className="text-text-main">
+                                  <span className="text-text-main line-clamp-2">
                                     {highlightDiff(item.original, item.revised)}
                                   </span>
                                 ) : (
@@ -582,6 +607,15 @@ export default function KoReviewWorkspace() {
                                   <div className="flex justify-center">
                                     <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-white border border-emerald-100 rounded-lg px-3 py-1 shadow-sm">
                                       Accepted
+                                    </span>
+                                  </div>
+                                ) : noIssue ? (
+                                  <div className="flex justify-center">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+                                      <span className="material-symbols-outlined text-sm">
+                                        check
+                                      </span>
+                                      OK
                                     </span>
                                   </div>
                                 ) : (
@@ -676,8 +710,8 @@ export default function KoReviewWorkspace() {
       {/* ═══ Footer ═══ */}
       {(mode === "review" || isComplete) && (
         <Footer
-          onBack={() => setCurrentStep("idle")}
-          onAction={mode === "review" ? handleApprove : undefined}
+          onBack={handleBack}
+          onAction={mode === "review" ? handleApproveClick : undefined}
           actionLabel={
             mode === "review"
               ? (submitting ? "Processing..." : "Confirm & Next Step")
@@ -686,6 +720,36 @@ export default function KoReviewWorkspace() {
           actionDisabled={mode !== "review" || submitting}
         />
       )}
+
+      {/* ═══ Back 경고 모달 ═══ */}
+      <ConfirmModal
+        open={showBackModal}
+        onClose={() => setShowBackModal(false)}
+        onConfirm={() => {
+          setShowBackModal(false);
+          reset();
+        }}
+        title="작업을 중단하시겠습니까?"
+        description="진행 중인 모든 내용이 초기화됩니다. 계속하시겠습니까?"
+        confirmLabel="확인"
+        cancelLabel="취소"
+        variant="warning"
+      />
+
+      {/* ═══ 미확인 항목 경고 모달 ═══ */}
+      <ConfirmModal
+        open={showUnconfirmedModal}
+        onClose={() => setShowUnconfirmedModal(false)}
+        onConfirm={() => {
+          setShowUnconfirmedModal(false);
+          doApprove();
+        }}
+        title="Unconfirmed Items Detected"
+        description={`미확인 항목이 ${undecidedCount}건 있습니다. 진행하면 미확인 항목은 자동으로 '수락'됩니다.`}
+        confirmLabel="Confirm & Proceed"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
     </>
   );
 }

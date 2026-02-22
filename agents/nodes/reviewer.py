@@ -254,6 +254,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
             "lang": lang,
             "translated": item["translated"],
             "old_translation": item["old_translation"],
+            "original_ko": item["source_ko"],
             "reason": reason,
         })
 

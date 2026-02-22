@@ -80,6 +80,11 @@
   animation: fadeIn 300ms ease-out forwards;
 }
 
+/* ── Badge enter (파이프라인 transition-500ms와 동기화) ── */
+.animate-badge-enter {
+  animation: fadeIn 500ms ease-out;
+}
+
 /* ── Fade + Slide-up (테이블/카드 등장) ── */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(12px); }

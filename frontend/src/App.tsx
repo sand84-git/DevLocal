@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { useSSE } from "./hooks/useSSE";
+import { useNavigationGuard } from "./hooks/useNavigationGuard";
 import type { AppStep } from "./types";
 import Header from "./components/Header";
 import DataSourceScreen from "./screens/DataSourceScreen";
@@ -90,8 +91,13 @@ function AnimatedScreen() {
 }
 
 export default function App() {
+  const currentStep = useAppStore((s) => s.currentStep);
+
   // SSE를 App 레벨에서 유지 — 화면 전환에도 연결 유지
   useSSE();
+
+  // 작업 중 브라우저 새로고침/탭 닫기 방지
+  useNavigationGuard(currentStep !== "idle" && currentStep !== "done");
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-page font-display text-text-main antialiased">

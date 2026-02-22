@@ -11,6 +11,8 @@ interface FooterProps {
   onCancel?: () => void;
   showExport?: boolean;
   onExport?: () => void;
+  showDiscard?: boolean;
+  onDiscard?: () => void;
 }
 
 export default function Footer({
@@ -24,6 +26,8 @@ export default function Footer({
   onCancel,
   showExport = false,
   onExport,
+  showDiscard = false,
+  onDiscard,
 }: FooterProps) {
   const currentStep = useAppStore((s) => s.currentStep);
   const mode = useAppStore((s) => s.mode);
@@ -56,6 +60,18 @@ export default function Footer({
               arrow_back
             </span>
             Back
+          </button>
+        )}
+
+        {/* Discard button (Back 옆) */}
+        {showDiscard && (
+          <button
+            onClick={onDiscard}
+            className="flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors h-11"
+            title="Discard all changes"
+          >
+            <span className="material-symbols-outlined text-lg">delete</span>
+            Discard
           </button>
         )}
 

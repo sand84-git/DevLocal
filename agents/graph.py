@@ -52,6 +52,9 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
     system_prompt = build_ko_proofreader_prompt()
     total_ko_rows = len(ko_rows)
     processed_count = 0
+    # 태그 검증용 원문 맵 (per-chunk 검증에 사용)
+    original_map = {r["key"]: r[REQUIRED_COLUMNS["korean"]] for r in ko_rows}
+    restored_count = 0
 
     for chunk_start in range(0, len(ko_rows), CHUNK_SIZE):
         chunk = ko_rows[chunk_start:chunk_start + CHUNK_SIZE]
@@ -85,6 +88,27 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
             for item in items:
                 item["comment"] = item.pop("changes", "")
                 item["has_issue"] = item.get("original", "") != item.get("revised", "")
+
+            # Per-chunk 태그 검증 (drip-feed 발행 전)
+            for item in items:
+                if not item["has_issue"]:
+                    continue
+                key = item.get("key", "")
+                original = original_map.get(key, "")
+                revised = item.get("revised", "")
+                if not original or not revised:
+                    continue
+                tag_broken = False
+                for pattern in TAG_PATTERNS:
+                    if sorted(re.findall(pattern, original)) != sorted(re.findall(pattern, revised)):
+                        tag_broken = True
+                        break
+                if tag_broken:
+                    item["revised"] = original
+                    item["has_issue"] = False
+                    item["comment"] = ""
+                    restored_count += 1
+
             ko_review_results.extend(items)
 
             # 청크별 부분 결과를 1행씩 drip-feed 전송
@@ -102,42 +126,11 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
             processed_count += len(chunk)
             logs.append(f"[한국어 검수] 오류: {e}")
 
-    # 태그 보존 후처리: AI가 태그를 삭제/변경한 경우 원본에서 복원
-    original_map = {r["key"]: r[REQUIRED_COLUMNS["korean"]] for r in ko_rows}
-    validated_results = []
-    restored_count = 0
-
-    for item in ko_review_results:
-        key = item.get("key", "")
-        original = original_map.get(key, "")
-        revised = item.get("revised", "")
-
-        if not original or not revised:
-            validated_results.append(item)
-            continue
-
-        # 각 태그 패턴에 대해 원본과 수정본의 태그 일치 검증
-        tag_broken = False
-        for pattern in TAG_PATTERNS:
-            orig_tags = re.findall(pattern, original)
-            rev_tags = re.findall(pattern, revised)
-            if sorted(orig_tags) != sorted(rev_tags):
-                tag_broken = True
-                break
-
-        if tag_broken:
-            # 태그가 손상된 수정은 버림 (원본 유지)
-            restored_count += 1
-        else:
-            validated_results.append(item)
-
     if restored_count:
         logs.append(
-            f"[한국어 검수] 태그 손상 수정 {restored_count}건 제외 (원본 유지)"
+            f"[한국어 검수] 태그 손상 수정 {restored_count}건 원본 복원"
         )
-
-    ko_review_results = validated_results
-    logs.append(f"[한국어 검수] 최종 수정 제안: {len(ko_review_results)}건")
+    logs.append(f"[한국어 검수] 최종 수정 제안: {len([r for r in ko_review_results if r.get('has_issue')])}건")
 
     return {
         "ko_review_results": ko_review_results,

@@ -8,6 +8,7 @@ import {
 import { useCountUp } from "../hooks/useCountUp";
 import { highlightDiff } from "../utils/diffHighlight";
 import Footer from "../components/Footer";
+import ConfirmModal from "../components/ConfirmModal";
 
 const PAGE_SIZE = 10;
 
@@ -34,6 +35,7 @@ export default function TranslationWorkspace() {
   const costSummary = useAppStore((s) => s.costSummary);
   const setTranslationsApplied = useAppStore((s) => s.setTranslationsApplied);
   const setCellsUpdated = useAppStore((s) => s.setCellsUpdated);
+  const reset = useAppStore((s) => s.reset);
 
   /* ── Local State ── */
   const [page, setPage] = useState(1);
@@ -41,20 +43,18 @@ export default function TranslationWorkspace() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
+  const [showBackModal, setShowBackModal] = useState(false);
+  const [showUnconfirmedModal, setShowUnconfirmedModal] = useState(false);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
 
   /* ── Mode ── */
   const mode = currentStep === "final_review" ? "review" : "translating";
   const prevModeRef = useRef(mode);
-  const [justEnteredReview, setJustEnteredReview] = useState(false);
 
   useEffect(() => {
     if (prevModeRef.current === "translating" && mode === "review") {
       setPage(1);
       setExpandedNote(null);
-      setJustEnteredReview(true);
-      const t = setTimeout(() => setJustEnteredReview(false), 600);
-      prevModeRef.current = mode;
-      return () => clearTimeout(t);
     }
     prevModeRef.current = mode;
   }, [mode]);
@@ -118,7 +118,7 @@ export default function TranslationWorkspace() {
   }, [partialReviews, activeLang]);
 
   /* ── Unified Rows ── */
-  type RowStatus = "translating" | "translated" | "reviewing" | "reviewed";
+  type RowStatus = "pending" | "translating" | "translated" | "reviewing" | "reviewed";
 
   const unifiedRows = useMemo(() => {
     if (mode === "review") {
@@ -146,10 +146,13 @@ export default function TranslationWorkspace() {
 
       let rowStatus: RowStatus;
       if (!isDone) {
-        rowStatus =
-          agentPhase === "reviewer" || agentPhase === "complete"
-            ? "translated"
-            : "translating";
+        if (agentPhase === "init") {
+          rowStatus = "pending";
+        } else if (agentPhase === "reviewer" || agentPhase === "complete") {
+          rowStatus = "translated";
+        } else {
+          rowStatus = "translating";
+        }
       } else if (hasReview || agentPhase === "complete") {
         rowStatus = "reviewed";
       } else if (agentPhase === "reviewer") {
@@ -228,6 +231,40 @@ export default function TranslationWorkspace() {
       const dk = `${row.key}_${row.lang}`;
       if (!reviewDecisions[dk]) setReviewDecision(dk, "accepted");
     }
+  }
+
+  /* ── Undecided count (변경된 항목만 대상) ── */
+  const undecidedCount = useMemo(() => {
+    return reviewResults.filter((r) => {
+      const dk = `${r.key}_${r.lang}`;
+      const hasChange = r.old_translation !== r.translated;
+      return hasChange && !reviewDecisions[dk];
+    }).length;
+  }, [reviewResults, reviewDecisions]);
+
+  function handleBack() {
+    setShowBackModal(true);
+  }
+
+  function handleConfirmClick() {
+    if (undecidedCount > 0) {
+      setShowUnconfirmedModal(true);
+    } else {
+      handleFinalApproval("approved");
+    }
+  }
+
+  function doApproveWithAutoAccept() {
+    // 미확인 항목을 모두 accepted로 설정
+    for (const r of reviewResults) {
+      const dk = `${r.key}_${r.lang}`;
+      if (!reviewDecisions[dk]) setReviewDecision(dk, "accepted");
+    }
+    handleFinalApproval("approved");
+  }
+
+  function handleDiscard() {
+    setShowDiscardModal(true);
   }
 
   const error = cancelError || submitError;
@@ -338,25 +375,23 @@ export default function TranslationWorkspace() {
               )}
             </div>
 
-            {/* Grid-collapse: agent pipeline (translating) OR summary stats (review) */}
+            {/* Grid-collapse: summary stats (review mode only) */}
             <div
               className="grid transition-[grid-template-rows] duration-500 ease-out"
-              style={{ gridTemplateRows: (agentPhase !== "init" || mode === "review") ? "1fr" : "0fr" }}
+              style={{ gridTemplateRows: mode === "review" ? "1fr" : "0fr" }}
             >
               <div className="overflow-hidden">
-                {mode === "review" ? (
-                  /* Summary stats */
+                {mode === "review" && (
                   <div className="mt-4 pt-3 border-t border-border-subtle grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      { icon: "translate", iconColor: "text-primary", label: "Total Strings", value: String(reviewResults.length), valueColor: "text-text-main", delay: 0 },
-                      { icon: "swap_horiz", iconColor: "text-emerald-500", label: "Changed", value: String(changedCount), valueColor: "text-emerald-600", delay: 80 },
-                      { icon: "horizontal_rule", iconColor: "text-slate-400", label: "Unchanged", value: String(unchangedCount), valueColor: "text-slate-400", delay: 160 },
-                      { icon: "paid", iconColor: "text-amber-500", label: "Est. Cost", value: `$${costSummary?.estimated_cost_usd?.toFixed(4) ?? "\u2014"}`, valueColor: "text-text-main", delay: 240 },
+                      { icon: "translate", iconColor: "text-primary", label: "Total Strings", value: String(reviewResults.length), valueColor: "text-text-main" },
+                      { icon: "swap_horiz", iconColor: "text-emerald-500", label: "Changed", value: String(changedCount), valueColor: "text-emerald-600" },
+                      { icon: "horizontal_rule", iconColor: "text-slate-400", label: "Unchanged", value: String(unchangedCount), valueColor: "text-slate-400" },
+                      { icon: "paid", iconColor: "text-amber-500", label: "Est. Cost", value: `$${costSummary?.estimated_cost_usd?.toFixed(4) ?? "\u2014"}`, valueColor: "text-text-main" },
                     ].map((stat) => (
                       <div
                         key={stat.label}
-                        className={`rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft ${justEnteredReview ? "animate-row-fade-in" : ""}`}
-                        style={justEnteredReview ? { animationDelay: `${stat.delay}ms` } : undefined}
+                        className="rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft"
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <span className={`material-symbols-outlined text-lg ${stat.iconColor}`}>
@@ -372,140 +407,142 @@ export default function TranslationWorkspace() {
                       </div>
                     ))}
                   </div>
-                ) : agentPhase !== "init" ? (
-                  /* Agent pipeline indicator */
-                  <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-center gap-3">
-                    {/* Translator */}
-                    <div
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
-                        agentPhase === "translator"
-                          ? "border-primary bg-primary-light/60 shadow-sm"
-                          : agentPhase === "reviewer" ||
-                              agentPhase === "complete"
-                            ? "border-emerald-200 bg-emerald-50/60"
-                            : "border-border-subtle bg-slate-50"
-                      }`}
-                    >
-                      <span
-                        className={`material-symbols-outlined text-lg ${
-                          agentPhase === "translator"
-                            ? "text-primary animate-spin360"
-                            : agentPhase === "reviewer" ||
-                                agentPhase === "complete"
-                              ? "text-emerald-500"
-                              : "text-text-muted"
-                        }`}
-                      >
-                        {agentPhase === "translator"
-                          ? "progress_activity"
-                          : agentPhase === "reviewer" ||
-                              agentPhase === "complete"
-                            ? "check_circle"
-                            : "circle"}
-                      </span>
-                      <span
-                        className={`text-xs font-semibold ${
-                          agentPhase === "translator"
-                            ? "text-primary-dark"
-                            : agentPhase === "reviewer" ||
-                                agentPhase === "complete"
-                              ? "text-emerald-600"
-                              : "text-text-muted"
-                        }`}
-                      >
-                        Translator
-                      </span>
-                    </div>
-
-                    <span
-                      className={`material-symbols-outlined text-lg transition-colors duration-500 ${
-                        agentPhase === "reviewer" || agentPhase === "complete"
-                          ? "text-emerald-400"
-                          : "text-slate-300"
-                      }`}
-                    >
-                      arrow_forward
-                    </span>
-
-                    {/* Reviewer */}
-                    <div
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
-                        agentPhase === "reviewer"
-                          ? "border-primary bg-primary-light/60 shadow-sm"
-                          : agentPhase === "complete"
-                            ? "border-emerald-200 bg-emerald-50/60"
-                            : "border-border-subtle bg-slate-50"
-                      }`}
-                    >
-                      <span
-                        className={`material-symbols-outlined text-lg ${
-                          agentPhase === "reviewer"
-                            ? "text-primary animate-spin360"
-                            : agentPhase === "complete"
-                              ? "text-emerald-500"
-                              : "text-text-muted"
-                        }`}
-                      >
-                        {agentPhase === "reviewer"
-                          ? "progress_activity"
-                          : agentPhase === "complete"
-                            ? "check_circle"
-                            : "circle"}
-                      </span>
-                      <span
-                        className={`text-xs font-semibold ${
-                          agentPhase === "reviewer"
-                            ? "text-primary-dark"
-                            : agentPhase === "complete"
-                              ? "text-emerald-600"
-                              : "text-text-muted"
-                        }`}
-                      >
-                        Reviewer
-                      </span>
-                    </div>
-
-                    <span
-                      className={`material-symbols-outlined text-lg transition-colors duration-500 ${
-                        agentPhase === "complete"
-                          ? "text-emerald-400"
-                          : "text-slate-300"
-                      }`}
-                    >
-                      arrow_forward
-                    </span>
-
-                    {/* Complete */}
-                    <div
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
-                        agentPhase === "complete"
-                          ? "border-emerald-200 bg-emerald-50/60 shadow-sm"
-                          : "border-border-subtle bg-slate-50"
-                      }`}
-                    >
-                      <span
-                        className={`material-symbols-outlined text-lg ${
-                          agentPhase === "complete"
-                            ? "text-emerald-500"
-                            : "text-text-muted"
-                        }`}
-                      >
-                        {agentPhase === "complete" ? "check_circle" : "circle"}
-                      </span>
-                      <span
-                        className={`text-xs font-semibold ${
-                          agentPhase === "complete"
-                            ? "text-emerald-600"
-                            : "text-text-muted"
-                        }`}
-                      >
-                        Complete
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
+                )}
               </div>
             </div>
+
+            {/* Agent pipeline — instant render (no slide animation) */}
+            {mode === "translating" && agentPhase !== "init" && (
+              <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-center gap-3">
+                {/* Translator */}
+                <div
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
+                    agentPhase === "translator"
+                      ? "border-primary bg-primary-light/60 shadow-sm"
+                      : agentPhase === "reviewer" ||
+                          agentPhase === "complete"
+                        ? "border-emerald-200 bg-emerald-50/60"
+                        : "border-border-subtle bg-slate-50"
+                  }`}
+                >
+                  <span
+                    className={`material-symbols-outlined text-lg ${
+                      agentPhase === "translator"
+                        ? "text-primary animate-spin360"
+                        : agentPhase === "reviewer" ||
+                            agentPhase === "complete"
+                          ? "text-emerald-500"
+                          : "text-text-muted"
+                    }`}
+                  >
+                    {agentPhase === "translator"
+                      ? "progress_activity"
+                      : agentPhase === "reviewer" ||
+                          agentPhase === "complete"
+                        ? "check_circle"
+                        : "circle"}
+                  </span>
+                  <span
+                    className={`text-xs font-semibold ${
+                      agentPhase === "translator"
+                        ? "text-primary-dark"
+                        : agentPhase === "reviewer" ||
+                            agentPhase === "complete"
+                          ? "text-emerald-600"
+                          : "text-text-muted"
+                    }`}
+                  >
+                    Translator
+                  </span>
+                </div>
+
+                <span
+                  className={`material-symbols-outlined text-lg transition-colors duration-500 ${
+                    agentPhase === "reviewer" || agentPhase === "complete"
+                      ? "text-emerald-400"
+                      : "text-slate-300"
+                  }`}
+                >
+                  arrow_forward
+                </span>
+
+                {/* Reviewer */}
+                <div
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
+                    agentPhase === "reviewer"
+                      ? "border-primary bg-primary-light/60 shadow-sm"
+                      : agentPhase === "complete"
+                        ? "border-emerald-200 bg-emerald-50/60"
+                        : "border-border-subtle bg-slate-50"
+                  }`}
+                >
+                  <span
+                    className={`material-symbols-outlined text-lg ${
+                      agentPhase === "reviewer"
+                        ? "text-primary animate-spin360"
+                        : agentPhase === "complete"
+                          ? "text-emerald-500"
+                          : "text-text-muted"
+                    }`}
+                  >
+                    {agentPhase === "reviewer"
+                      ? "progress_activity"
+                      : agentPhase === "complete"
+                        ? "check_circle"
+                        : "circle"}
+                  </span>
+                  <span
+                    className={`text-xs font-semibold ${
+                      agentPhase === "reviewer"
+                        ? "text-primary-dark"
+                        : agentPhase === "complete"
+                          ? "text-emerald-600"
+                          : "text-text-muted"
+                    }`}
+                  >
+                    Reviewer
+                  </span>
+                </div>
+
+                <span
+                  className={`material-symbols-outlined text-lg transition-colors duration-500 ${
+                    agentPhase === "complete"
+                      ? "text-emerald-400"
+                      : "text-slate-300"
+                  }`}
+                >
+                  arrow_forward
+                </span>
+
+                {/* Complete */}
+                <div
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-500 ${
+                    agentPhase === "complete"
+                      ? "border-emerald-200 bg-emerald-50/60 shadow-sm"
+                      : "border-border-subtle bg-slate-50"
+                  }`}
+                >
+                  <span
+                    className={`material-symbols-outlined text-lg ${
+                      agentPhase === "complete"
+                        ? "text-emerald-500"
+                        : "text-text-muted"
+                    }`}
+                  >
+                    {agentPhase === "complete" ? "check_circle" : "circle"}
+                  </span>
+                  <span
+                    className={`text-xs font-semibold ${
+                      agentPhase === "complete"
+                        ? "text-emerald-600"
+                        : "text-text-muted"
+                    }`}
+                  >
+                    Complete
+                  </span>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ═══ Error Banner ═══ */}
@@ -653,17 +690,17 @@ export default function TranslationWorkspace() {
                   <div className="col-span-1">AI Note</div>
                   <div className="col-span-3">Source (KR)</div>
                   <div className="col-span-3">Previous Translation</div>
-                  <div className="col-span-4">New Translation</div>
-                  <div className="col-span-1 text-center">
+                  <div className="col-span-3">New Translation</div>
+                  <div className="col-span-2 text-center">
                     {mode === "review" ? "Action" : "Status"}
                   </div>
                 </div>
 
                 {/* Rows */}
                 <div className="overflow-y-auto custom-scrollbar flex-1 bg-white min-h-[400px]">
-                  {pageRows.map((row, idx) => {
+                  {pageRows.map((row) => {
                     const rowKey = `${row.key}_${row.lang}`;
-                    const isUnchanged = row.isDone && !row.hasChange;
+                    const isUnchanged = mode === "review" && row.isDone && !row.hasChange;
 
                     // Drip-feed row animation (translating mode only)
                     let showRowAnim = false;
@@ -674,16 +711,12 @@ export default function TranslationWorkspace() {
                       }
                     }
 
-                    // Review mode stagger animation
-                    const reviewStagger = mode === "review" && justEnteredReview;
-
                     return (
                       <div
                         key={rowKey}
                         className={`grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-all duration-200 group ${
                           isUnchanged ? "opacity-45 hover:opacity-100" : ""
-                        } ${showRowAnim || reviewStagger ? "animate-row-fade-in" : ""}`}
-                        style={reviewStagger ? { animationDelay: `${idx * 40}ms` } : undefined}
+                        } ${showRowAnim ? "animate-row-fade-in" : ""}`}
                       >
                         {/* AI Note */}
                         <div className="col-span-1 relative">
@@ -750,7 +783,7 @@ export default function TranslationWorkspace() {
                         </div>
 
                         {/* New Translation */}
-                        <div className="col-span-4 text-sm leading-relaxed">
+                        <div className="col-span-3 text-sm leading-relaxed">
                           {row.isDone ? (
                             row.hasChange && row.old_translation ? (
                               <span className="text-text-main line-clamp-2">
@@ -778,61 +811,77 @@ export default function TranslationWorkspace() {
                         </div>
 
                         {/* Action / Status */}
-                        <div className="col-span-1 flex justify-center">
+                        <div className="col-span-2 flex justify-center">
                           {mode === "review" ? (
-                            <div className="flex gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() =>
-                                  setReviewDecision(rowKey, "accepted")
-                                }
-                                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                                  reviewDecisions[rowKey] === "accepted"
-                                    ? "bg-primary text-white"
-                                    : "bg-surface-pale text-text-muted hover:text-white hover:bg-primary"
-                                }`}
-                              >
-                                <span className="material-symbols-outlined text-xl">
+                            row.hasChange ? (
+                              <div className="flex gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() =>
+                                    setReviewDecision(rowKey, "accepted")
+                                  }
+                                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                                    reviewDecisions[rowKey] === "accepted"
+                                      ? "bg-primary text-white"
+                                      : "bg-surface-pale text-text-muted hover:text-white hover:bg-primary"
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-xl">
+                                    check
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setReviewDecision(rowKey, "rejected")
+                                  }
+                                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                                    reviewDecisions[rowKey] === "rejected"
+                                      ? "bg-red-500 text-white"
+                                      : "bg-surface-pale text-text-muted hover:text-white hover:bg-red-500"
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-xl">
+                                    close
+                                  </span>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+                                <span className="material-symbols-outlined text-sm">
                                   check
                                 </span>
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setReviewDecision(rowKey, "rejected")
-                                }
-                                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-                                  reviewDecisions[rowKey] === "rejected"
-                                    ? "bg-red-500 text-white"
-                                    : "bg-surface-pale text-text-muted hover:text-white hover:bg-red-500"
-                                }`}
-                              >
-                                <span className="material-symbols-outlined text-xl">
-                                  close
-                                </span>
-                              </button>
-                            </div>
+                                OK
+                              </span>
+                            )
+                          ) : row.rowStatus === "pending" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-400 animate-badge-enter">
+                              <span className="material-symbols-outlined text-sm">
+                                hourglass_empty
+                              </span>
+                              Pending
+                            </span>
                           ) : row.rowStatus === "translating" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light/50 px-2.5 py-0.5 text-xs font-medium text-primary animate-breathe">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light/50 px-2.5 py-0.5 text-xs font-medium text-primary animate-breathe animate-badge-enter">
                               <span className="material-symbols-outlined text-sm animate-spin360">
                                 progress_activity
                               </span>
                               Translating
                             </span>
                           ) : row.rowStatus === "translated" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light px-2.5 py-0.5 text-xs font-medium text-primary-dark">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light px-2.5 py-0.5 text-xs font-medium text-primary-dark animate-badge-enter">
                               <span className="material-symbols-outlined text-sm">
                                 check
                               </span>
                               Translated
                             </span>
                           ) : row.rowStatus === "reviewing" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-breathe">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-breathe animate-badge-enter">
                               <span className="material-symbols-outlined text-sm animate-spin360">
                                 progress_activity
                               </span>
                               Reviewing
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-badge-enter">
                               <span className="material-symbols-outlined text-sm">
                                 check
                               </span>
@@ -868,12 +917,52 @@ export default function TranslationWorkspace() {
         />
       ) : (
         <Footer
-          onBack={() => setCurrentStep("ko_review")}
-          onAction={() => handleFinalApproval("approved")}
-          actionLabel={submitting ? "Processing..." : "Confirm & Next Step"}
+          onBack={handleBack}
+          onAction={handleConfirmClick}
+          actionLabel={submitting ? "Processing..." : "Confirm & Push to Sheet"}
+          actionIcon="cloud_upload"
           actionDisabled={submitting}
+          showDiscard
+          onDiscard={handleDiscard}
         />
       )}
+
+      {/* ═══ Modals ═══ */}
+      <ConfirmModal
+        open={showBackModal}
+        onClose={() => setShowBackModal(false)}
+        onConfirm={() => { setShowBackModal(false); reset(); }}
+        title="작업을 중단하시겠습니까?"
+        description="진행 중인 모든 내용이 초기화됩니다. 계속하시겠습니까?"
+        confirmLabel="확인"
+        cancelLabel="취소"
+        variant="warning"
+      />
+      <ConfirmModal
+        open={showUnconfirmedModal}
+        onClose={() => setShowUnconfirmedModal(false)}
+        onConfirm={() => { setShowUnconfirmedModal(false); doApproveWithAutoAccept(); }}
+        title="Unconfirmed Items Detected"
+        description={
+          <>
+            미확인 항목이 <strong>{undecidedCount}건</strong> 있습니다.
+            진행하면 미확인 항목은 자동으로 <strong>'수락'</strong>됩니다.
+          </>
+        }
+        confirmLabel="Confirm & Proceed"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
+      <ConfirmModal
+        open={showDiscardModal}
+        onClose={() => setShowDiscardModal(false)}
+        onConfirm={() => { setShowDiscardModal(false); reset(); }}
+        title="변경사항을 폐기하시겠습니까?"
+        description="모든 번역 결과가 삭제되고 시트에는 아무 변경도 적용되지 않습니다."
+        confirmLabel="폐기하기"
+        cancelLabel="취소"
+        variant="danger"
+      />
     </>
   );
 }
