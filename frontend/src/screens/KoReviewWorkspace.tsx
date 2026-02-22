@@ -34,6 +34,7 @@ export default function KoReviewWorkspace() {
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
   const [showBackModal, setShowBackModal] = useState(false);
   const [showUnconfirmedModal, setShowUnconfirmedModal] = useState(false);
+  const [error, setError] = useState("");
 
   /* ── Mode ── */
   const mode = currentStep === "ko_review" ? "review" : "loading";
@@ -137,8 +138,8 @@ export default function KoReviewWorkspace() {
       }
       await approveKo(sessionId, { decision: "approved" });
       setCurrentStep("translating");
-    } catch {
-      // TODO: error handling
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Approval failed");
     } finally {
       setSubmitting(false);
     }
@@ -709,6 +710,19 @@ export default function KoReviewWorkspace() {
           )}
         </div>
       </main>
+
+      {/* ═══ Error Banner ═══ */}
+      {error && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 max-w-lg w-full px-4">
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 shadow-lg animate-fade-slide-up">
+            <span className="material-symbols-outlined text-lg">error</span>
+            <span className="flex-1">{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-red-100 rounded">
+              <span className="material-symbols-outlined text-base">close</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ═══ Footer ═══ */}
       {mode === "loading" ? (

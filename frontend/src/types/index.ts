@@ -144,6 +144,7 @@ export interface ReviewChunkData {
 /* ── Config ── */
 export interface AppConfig {
   saved_url?: string;
+  saved_sheet?: string;
   backup_folder?: string;
   bot_email?: string;
 }

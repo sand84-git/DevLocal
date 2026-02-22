@@ -69,8 +69,8 @@ def _save_config(data: dict):
             json.dumps(existing, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-    except OSError:
-        pass
+    except OSError as e:
+        logger.warning("Config save failed: %s", e)
 
 
 # ── Sheet Connection ─────────────────────────────────────────────────
@@ -214,18 +214,18 @@ def _run_initial_phase(session):
         # ko_review 결과 수집
         state_snapshot = session.graph.get_state(session.config)
         result = state_snapshot.values
-        session.graph_result = result
-        session.logs = result.get("logs", [])
-        session.current_step = "ko_review"
-
-        # 전체 행 포함 ko_review_results 구성 (LLM은 변경 행만 반환하므로 나머지 보충)
         ko_results_raw = result.get("ko_review_results", [])
-        # Cancel 복구용 캐시 저장
-        session.cached_ko_review_results = ko_results_raw
-        session.cached_ko_tokens = (
-            result.get("total_input_tokens", 0),
-            result.get("total_output_tokens", 0),
-        )
+
+        with session.lock:
+            session.graph_result = result
+            session.logs = result.get("logs", [])
+            session.current_step = "ko_review"
+            # Cancel 복구용 캐시 저장
+            session.cached_ko_review_results = ko_results_raw
+            session.cached_ko_tokens = (
+                result.get("total_input_tokens", 0),
+                result.get("total_output_tokens", 0),
+            )
         ko_result_map = {r["key"]: r for r in ko_results_raw}
         original_data = result.get("original_data", [])
         ko_results = []
@@ -281,18 +281,18 @@ async def api_stream(session_id: str):
     logger.info("SSE stream opened: %s (step=%s)", session_id, session.current_step)
 
     loop = asyncio.get_event_loop()
-    session._loop = loop
-
-    # 이전 SSE 연결 무효화 — generation counter 증가
-    session._sse_generation += 1
-    current_gen = session._sse_generation
-
-    # Queue: 없을 때만 새로 생성 (SSE 재연결 시 기존 Queue 유지)
-    if session.event_queue is None:
-        session.event_queue = asyncio.Queue()
+    with session.lock:
+        session._loop = loop
+        # 이전 SSE 연결 무효화 — generation counter 증가
+        session._sse_generation += 1
+        current_gen = session._sse_generation
+        # Queue: 없을 때만 새로 생성 (SSE 재연결 시 기존 Queue 유지)
+        if session.event_queue is None:
+            session.event_queue = asyncio.Queue()
+        should_start = session.current_step == "loading"
 
     # loading 상태일 때만 초기 phase 실행 (재연결 시 재실행 방지)
-    if session.current_step == "loading":
+    if should_start:
         executor.submit(_run_initial_phase, session)
 
     async def event_generator():
@@ -339,9 +339,10 @@ def _run_translation_phase(session, resume_value: str):
         # 결과 수집
         state_snapshot = session.graph.get_state(session.config)
         result = state_snapshot.values
-        session.graph_result = result
-        session.logs = result.get("logs", [])
-        session.current_step = "final_review"
+        with session.lock:
+            session.graph_result = result
+            session.logs = result.get("logs", [])
+            session.current_step = "final_review"
 
         # Translation diff report
         review_results = result.get("review_results", [])
@@ -382,15 +383,16 @@ async def api_approve_ko(session_id: str, req: ApprovalRequest):
 
     logger.info("KR approval: session=%s, decision=%s", session_id, req.decision)
 
-    session.ko_resume_value = req.decision
-    session.current_step = "translating"
+    loop = asyncio.get_event_loop()
+    with session.lock:
+        session.ko_resume_value = req.decision
+        session.current_step = "translating"
+        session._loop = loop
+        # Cancel 후 재진입 시 SSE 재연결 전에 호출될 수 있으므로 queue 확보
+        if session.event_queue is None:
+            session.event_queue = asyncio.Queue()
 
     # 백그라운드에서 번역 실행 (시트에는 Write하지 않음 — 최종 컨펌 시점에서 일괄 반영)
-    loop = asyncio.get_event_loop()
-    session._loop = loop
-    # Cancel 후 재진입 시 SSE 재연결 전에 호출될 수 있으므로 queue 확보
-    if session.event_queue is None:
-        session.event_queue = asyncio.Queue()
     executor.submit(_run_translation_phase, session, req.decision)
 
     return {"status": "translating"}
@@ -426,21 +428,24 @@ async def api_approve_final(session_id: str, req: ApprovalRequest):
             # 최종 컨펌 직전 백업 생성 (시트 Write 전 안전장치)
             if session.df is not None:
                 sheet_name = (session.initial_state or {}).get("sheet_name", "unknown")
-                save_backup_to_folder(session.df, sheet_name)
+                backup_folder = _load_config().get("backup_folder", "./backups")
+                save_backup_to_folder(session.df, sheet_name, folder=backup_folder)
 
             result = session.graph.invoke(Command(resume="approved"), config=config)
-            session.graph_result = result
-            session.logs = result.get("logs", [])
+            with session.lock:
+                session.graph_result = result
+                session.logs = result.get("logs", [])
 
             updates = result.get("_updates", [])
             if updates and session.worksheet and session.df is not None:
                 batch_update_sheet(session.worksheet, updates, session.df)
                 try:
                     batch_format_cells(session.worksheet, updates, session.df)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Cell formatting failed (non-critical): %s", e)
 
-            session.current_step = "done"
+            with session.lock:
+                session.current_step = "done"
             _emit_done(session)
             return {
                 "status": "done",
@@ -453,10 +458,11 @@ async def api_approve_final(session_id: str, req: ApprovalRequest):
         # 거부: 중간 Write가 없으므로 원복 불필요 — 세션 정리만 수행
         try:
             session.graph.invoke(Command(resume="rejected"), config=config)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Rejected graph invoke failed (non-critical): %s", e)
 
-        session.current_step = "done"
+        with session.lock:
+            session.current_step = "done"
         _emit_done(session)
         return {"status": "done", "translations_applied": False}
 
@@ -475,17 +481,19 @@ def api_cancel(session_id: str):
     # ── 이전 SSE 즉시 종료 ──
     # old queue에 _sse_close를 넣어 블로킹된 get()을 깨우고,
     # generation을 증가시켜 event_generator 루프를 종료시킴
-    old_queue = session.event_queue
-    session._sse_generation += 1
-    if old_queue and session._loop:
+    with session.lock:
+        old_queue = session.event_queue
+        old_loop = session._loop
+        session._sse_generation += 1
+        session.event_queue = None
+    if old_queue and old_loop:
         try:
             asyncio.run_coroutine_threadsafe(
                 old_queue.put(("_sse_close", {})),
-                session._loop,
+                old_loop,
             )
         except Exception:
             pass
-    session.event_queue = None
 
     from agents.graph import build_graph
 
@@ -513,16 +521,18 @@ def api_cancel(session_id: str):
 
             # 세션 복구용 상태 갱신
             state_snapshot = session.graph.get_state(session.config)
-            session.graph_result = state_snapshot.values
-            session.logs = session.graph_result.get("logs", [])
-
-            session.current_step = "ko_review"
+            with session.lock:
+                session.graph_result = state_snapshot.values
+                session.logs = session.graph_result.get("logs", [])
+                session.current_step = "ko_review"
             return {"status": "ko_review"}
         except Exception as e:
-            session.current_step = "idle"
+            with session.lock:
+                session.current_step = "idle"
             raise HTTPException(status_code=500, detail=str(e))
 
-    session.current_step = "idle"
+    with session.lock:
+        session.current_step = "idle"
     return {"status": "idle"}
 
 

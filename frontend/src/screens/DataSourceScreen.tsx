@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "../store/useAppStore";
-import { connectSheet, startPipeline, getConfig } from "../api/client";
+import { connectSheet, startPipeline, getConfig, saveConfig } from "../api/client";
 import Footer from "../components/Footer";
 
 export default function DataSourceScreen() {
@@ -34,6 +34,9 @@ export default function DataSourceScreen() {
         if (cfg.saved_url && !sheetUrl) {
           setSheetUrl(cfg.saved_url);
         }
+        if (cfg.saved_sheet) {
+          setSelectedSheet(cfg.saved_sheet);
+        }
         if (cfg.bot_email) {
           setBotEmail(cfg.bot_email);
         }
@@ -62,7 +65,10 @@ export default function DataSourceScreen() {
       setSheetNames(res.sheet_names);
       setBotEmail(res.bot_email);
       if (res.sheet_names.length > 0) {
-        setSelectedSheet(res.sheet_names[0]);
+        // 이전 선택 탭이 있고 목록에 포함되면 유지, 아니면 첫 번째 선택
+        if (!selectedSheet || !res.sheet_names.includes(selectedSheet)) {
+          setSelectedSheet(res.sheet_names[0]);
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connection failed");
@@ -86,6 +92,8 @@ export default function DataSourceScreen() {
         row_limit: rowEnd > 0 ? rowEnd - rowStart : 0,
       });
       setSessionId(res.session_id);
+      // 설정 영속 저장 (시트 URL + 선택된 탭)
+      saveConfig({ saved_url: sheetUrl, saved_sheet: selectedSheet }).catch(() => {});
     } catch (e) {
       // 실패 시 idle로 복귀
       setCurrentStep("idle");
