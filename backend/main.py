@@ -1,6 +1,7 @@
 """FastAPI 메인 앱"""
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -16,22 +17,39 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.api.routes import router
 
 app = FastAPI(title="DevLocal API", version="2.0.0")
 
+# CORS — 개발 환경용 (프로덕션 단일 컨테이너에서는 same-origin이라 불필요)
+_allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(router, prefix="/api")
+
+# ── 정적 파일 서빙 (프로덕션: React 빌드 결과물) ──
+_STATIC_DIR = _PROJECT_ROOT / "frontend" / "dist"
+if _STATIC_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=_STATIC_DIR / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """API 외 모든 경로 → index.html (SPA fallback)"""
+        file_path = _STATIC_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(_STATIC_DIR / "index.html")
 
 
 @app.on_event("startup")

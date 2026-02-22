@@ -1,0 +1,36 @@
+# Git
+.git/
+.gitignore
+
+# Secrets (환경변수로 주입)
+.env
+.gcp_service_account.json
+.app_config.json
+
+# Node
+frontend/node_modules/
+frontend/.vite/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Legacy Streamlit
+app.py
+utils/ui_components.py
+.streamlit/
+requirements.txt
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Docs / Plans
+docs/
+tasks/
+stitch/
+*.md
