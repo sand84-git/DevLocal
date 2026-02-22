@@ -146,6 +146,7 @@ def api_start(req: StartRequest):
             "retry_count": {},
             "total_input_tokens": 0,
             "total_output_tokens": 0,
+            "total_reasoning_tokens": 0,
             "logs": [],
             "_updates": [],
             "_needs_retry": [],
@@ -239,6 +240,7 @@ def _run_initial_phase(session):
             session.cached_ko_tokens = (
                 result.get("total_input_tokens", 0),
                 result.get("total_output_tokens", 0),
+                result.get("total_reasoning_tokens", 0),
             )
         ko_result_map = {r["key"]: r for r in ko_results_raw}
         original_data = result.get("original_data", [])
@@ -375,6 +377,7 @@ def _run_translation_phase(session, resume_value: str):
         cost_summary = {
             "input_tokens": result.get("total_input_tokens", 0),
             "output_tokens": result.get("total_output_tokens", 0),
+            "reasoning_tokens": result.get("total_reasoning_tokens", 0),
         }
 
         emitter("final_review_ready", {
@@ -524,6 +527,7 @@ def api_cancel(session_id: str):
                 cancel_state["ko_review_results"] = session.cached_ko_review_results
                 cancel_state["total_input_tokens"] = session.cached_ko_tokens[0]
                 cancel_state["total_output_tokens"] = session.cached_ko_tokens[1]
+                cancel_state["total_reasoning_tokens"] = session.cached_ko_tokens[2] if len(session.cached_ko_tokens) > 2 else 0
                 # logs는 비워둠 — data_backup/context_glossary가 새로 쌓고,
                 # ko_review_node는 캐시 히트 로그 1줄만 추가
 
@@ -576,10 +580,12 @@ def api_state(session_id: str):
         total_rows = len(session.graph_result.get("original_data", []))
         input_t = session.graph_result.get("total_input_tokens", 0)
         output_t = session.graph_result.get("total_output_tokens", 0)
-        cost = (input_t * LLM_PRICING["input"]) + (output_t * LLM_PRICING["output"])
+        reasoning_t = session.graph_result.get("total_reasoning_tokens", 0)
+        cost = (input_t * LLM_PRICING["input"]) + ((output_t + reasoning_t) * LLM_PRICING["output"])
         cost_summary = {
             "input_tokens": input_t,
             "output_tokens": output_t,
+            "reasoning_tokens": reasoning_t,
             "estimated_cost_usd": round(cost, 4),
         }
 

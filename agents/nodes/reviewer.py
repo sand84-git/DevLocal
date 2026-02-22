@@ -69,6 +69,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
     logs = list(state.get("logs", []))
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
+    total_reasoning_tokens = state.get("total_reasoning_tokens", 0)
     custom_prompt = state.get("custom_prompt", "")
 
     # 원본 데이터 맵 구축
@@ -231,6 +232,8 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
                 total_output_tokens += getattr(
                     response.usage, "completion_tokens", 0
                 )
+                if hasattr(response.usage, "completion_tokens_details") and response.usage.completion_tokens_details:
+                    total_reasoning_tokens += getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0) or 0
 
                 content = response.choices[0].message.content.strip()
                 if content.startswith("```"):
@@ -314,5 +317,6 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
         "retry_count": retry_count,
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
+        "total_reasoning_tokens": total_reasoning_tokens,
         "logs": logs,
     }

@@ -186,12 +186,14 @@ export function useSSE() {
         s.setReviewResults(data.review_results);
         s.setFailedRows(data.failed_rows);
         if (data.cost) {
+          const reasoningTokens = data.cost.reasoning_tokens ?? 0;
           const cost =
             data.cost.input_tokens * LLM_PRICING.input +
-            data.cost.output_tokens * LLM_PRICING.output;
+            (data.cost.output_tokens + reasoningTokens) * LLM_PRICING.output;
           s.setCostSummary({
             input_tokens: data.cost.input_tokens,
             output_tokens: data.cost.output_tokens,
+            reasoning_tokens: reasoningTokens,
             estimated_cost_usd: Math.round(cost * 10000) / 10000,
           });
         }

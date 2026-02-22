@@ -54,6 +54,7 @@ export interface SessionStateResponse {
 export interface CostSummary {
   input_tokens: number;
   output_tokens: number;
+  reasoning_tokens: number;
   estimated_cost_usd: number;
 }
 

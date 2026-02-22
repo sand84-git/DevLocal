@@ -13,7 +13,7 @@ export default function DoneScreen() {
   const reset = useAppStore((s) => s.reset);
 
   const totalTokens = costSummary
-    ? costSummary.input_tokens + costSummary.output_tokens
+    ? costSummary.input_tokens + costSummary.output_tokens + (costSummary.reasoning_tokens ?? 0)
     : 0;
   const estimatedCost = costSummary?.estimated_cost_usd ?? 0;
   const failedRows = useAppStore((s) => s.failedRows);
@@ -102,7 +102,7 @@ export default function DoneScreen() {
               icon="attach_money"
               iconColor="bg-green-50 text-green-600"
               label="Total Cost"
-              value={`$${estimatedCost.toFixed(2)}`}
+              value={`$${estimatedCost.toFixed(4)}`}
               badge="Est."
             />
           </div>

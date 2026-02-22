@@ -35,6 +35,7 @@ class LocalizationState(TypedDict):
     # 비용 추적
     total_input_tokens: int
     total_output_tokens: int
+    total_reasoning_tokens: int
 
     # 로그
     logs: list[str]
