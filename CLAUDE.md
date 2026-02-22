@@ -28,7 +28,7 @@ data_backup → context_glossary → ko_review → ko_approval(HITL 1)
 run_dev.sh                # FastAPI(8000) + Vite(5173) 동시 실행 스크립트
 .env                      # XAI_API_KEY + GCP_SERVICE_ACCOUNT_JSON_PATH (gitignore)
 .gcp_service_account.json # GCP 서비스 계정 JSON (gitignore)
-.app_config.json          # 시트 URL/백업폴더 영속 저장 (gitignore)
+.app_config.json          # 시트 URL/백업폴더/Glossary/프롬프트 영속 저장 (gitignore)
 
 backend/
   config.py               # 환경변수 기반 설정 (st.secrets 대체)
@@ -40,14 +40,30 @@ backend/
 
 frontend/
   src/
-    index.css             # Tailwind v4 @theme 디자인 토큰
-    App.tsx               # currentStep 기반 화면 라우팅
-    types/index.ts        # TypeScript 인터페이스
-    store/useAppStore.ts  # Zustand 전역 상태
+    index.css             # Tailwind v4 @theme 디자인 토큰 (색상/타이포/애니메이션)
+    App.tsx               # currentStep 기반 화면 라우팅 + 애니메이션 전환
+    types/index.ts        # TypeScript 인터페이스 (AppStep, SSE 이벤트, 설정 등)
+    store/useAppStore.ts  # Zustand 전역 상태 (연결/세션/HITL/청크/설정/All Sheets)
     api/client.ts         # 9개 API 래퍼 함수
-    hooks/useSSE.ts       # EventSource SSE 훅
-    components/           # Header, Footer, StepIndicator, ProgressSection
-    screens/              # DataSource, Loading, KoReview, Translating, FinalReview, Done
+    hooks/
+      useSSE.ts           # EventSource SSE 훅 (자동 재연결, 세션 동기화)
+      useSheetQueue.ts    # All Sheets 모드 자동 순차 처리
+      useNavigationGuard.ts # 작업 중 브라우저 새로고침/닫기 방지
+      useCountUp.ts       # 숫자 카운트업 애니메이션
+    components/
+      Header.tsx          # 로고 + 스텝 인디케이터 + SSE 상태 배지
+      Footer.tsx          # Back/Cancel + 모드 토글 + Settings + 메인 액션
+      StepIndicator.tsx   # 5단계 시각적 진행률 (아이콘 + 연결 라인)
+      ConfirmModal.tsx    # 확인 모달 (warning/danger 변형)
+      SettingsModal.tsx   # 설정 모달 (Glossary 편집 + AI 프롬프팅)
+    screens/
+      DataSourceScreen.tsx      # Step 1: 시트 연결 + 탭 선택 + 모드 설정
+      KoReviewWorkspace.tsx     # Step 1-2 통합: 데이터 로드 + 한국어 검수
+      TranslationWorkspace.tsx  # Step 3-4 통합: 번역 진행 + 최종 검수
+      DoneScreen.tsx            # Step 5: 완료 요약 + Push to Sheets
+    utils/
+      diffHighlight.tsx  # LCS 기반 단어 단위 Diff 하이라이팅
+      stagger.ts         # 캐스케이드 입장 애니메이션 유틸
 
 agents/
   graph.py                # LangGraph StateGraph (8 Node + HITL 2곳)
@@ -57,13 +73,14 @@ agents/
 
 config/
   constants.py            # 상수 (CHUNK_SIZE=15, LLM_MODEL, 태그패턴 등)
-  glossary.py             # 언어별 Glossary 딕셔너리
+  glossary.py             # 언어별 Glossary 딕셔너리 + 기본값
 
 utils/
   sheets.py               # gspread 래퍼 (인증, 로드, 백업, Batch Write, Backoff, 셀 포맷팅)
   validation.py           # 정규식 태그 검증 + Glossary 후처리
   diff_report.py          # Diff 리포트 CSV 생성
   cost_tracker.py         # 토큰/비용 추적 (CostTracker 클래스)
+  drip_feed.py            # SSE 드립피드 유틸 (150ms 간격 항목별 전송)
 
 app.py                    # (Legacy) Streamlit 메인 앱
 utils/ui_components.py    # (Legacy) Streamlit UI 컴포넌트
@@ -73,10 +90,20 @@ utils/ui_components.py    # (Legacy) Streamlit UI 컴포넌트
 - **디자인 시스템**: Stitch 기반 — Sky Blue (#0ea5e9) + Inter 폰트 + Material Symbols Outlined
 - **디자인 토큰 참조**: `memory/ui-design-rules.md` (색상/타이포/그림자/컴포넌트 상세)
 - **화면 흐름**: idle → loading → ko_review → translating → final_review → done
+- **통합 워크스페이스 패턴**:
+  - `KoReviewWorkspace`: loading + ko_review 단계를 하나의 화면에서 처리 (프로그레스 → 테이블 전환)
+  - `TranslationWorkspace`: translating + final_review 단계를 하나의 화면에서 처리 (파이프라인 → 검수 전환)
+  - 같은 워크스페이스 내 전환 시 애니메이션 스킵 (자연스러운 UX)
 - **스텝 인디케이터**: 5단계 (Load, KR Review, Translating, Multi-Review, Complete)
 - **실시간 업데이트**: SSE (`/api/stream/{sessionId}`) → EventSource → Zustand 상태 갱신
+  - 드립피드: 청크 결과를 150ms 간격으로 항목별 전송 (부드러운 테이블 채워짐)
+  - 자동 재연결: 5회까지 지수 백오프 (1~16초)
+  - 세션 복원: 재연결 시 `getSessionState()` 호출로 상태 동기화
 - **HITL**: ko_review에서 Accept/Reject → POST `/api/approve-ko`, final_review → POST `/api/approve-final`
 - **번역 취소**: POST `/api/cancel/{sessionId}` → 그래프 재생성 → ko_review 복귀
+- **All Sheets 모드**: 전체 시트를 자동 순차 처리 (useSheetQueue 훅, 2초 딜레이)
+- **Settings 모달**: Glossary 편집 (언어별) + 게임 시놉시스 + 톤앤매너 + 시트별 커스텀 프롬프트
+- **네비게이션 가드**: 작업 진행 중 브라우저 새로고침/닫기 방지 (beforeunload)
 
 ## API 엔드포인트 (FastAPI, /api prefix)
 | Method | Path | 설명 |
@@ -146,4 +173,5 @@ cd frontend && npm run dev
 - PRD_v2.md: 상세 요구사항
 - DEVELOPMENT_PLAN.md: 구현 계획서
 - docs/plans/2026-02-21-react-fastapi-migration.md: React 마이그레이션 계획
+- docs/USER_GUIDE.md: 사용자 가이드 (비개발자용 사용법 + 번역 기준 설명)
 - memory/ui-design-rules.md: Stitch 기반 UI 디자인 토큰/컴포넌트 규칙

@@ -1,7 +1,7 @@
 # 개발 계획: 게임 로컬라이징 자동화 툴
 
 > PRD v2 기반 구현 계획서
-> **상태: 전 Phase 구현 완료 (2026-02-21)**
+> **상태: 전 Phase 구현 완료 (2026-02-21) + React+FastAPI 마이그레이션 완료 (2026-02-22)**
 
 ---
 
@@ -41,7 +41,7 @@ DevLocal/
 
 ---
 
-## 구현 단계 (총 7단계) — 전체 완료
+## 구현 단계 (총 8단계) — 전체 완료
 
 ### Phase 1: 프로젝트 기초 세팅 — 완료
 - `requirements.txt`, `.streamlit/config.toml`, `config/constants.py`, `config/glossary.py`
@@ -86,6 +86,28 @@ DevLocal/
 - Translator `\n`/`\t` 복원 PASS
 - Reviewer 3회 재시도 + 검수실패 로직 PASS
 
+### Phase 8: React+FastAPI 마이그레이션 — 완료 (2026-02-22)
+**Backend (De-Streamlit)**:
+- `backend/config.py`: `.env` 기반 환경변수 관리 (st.secrets 대체)
+- `backend/main.py`: FastAPI 앱 (CORS, /api 라우터)
+- `backend/api/routes.py`: 10개 REST+SSE 엔드포인트
+- `backend/api/schemas.py`: Pydantic 요청/응답 모델
+- `backend/api/session_manager.py`: LRU 세션 관리 (max 10, 그래프 인스턴스 보유)
+- `utils/drip_feed.py`: SSE 드립피드 유틸리티 (150ms 간격 항목별 전송)
+
+**Frontend (React SPA)**:
+- React 19 + Vite 7 + TypeScript + Tailwind CSS v4 + Zustand
+- 4 화면: DataSourceScreen, KoReviewWorkspace, TranslationWorkspace, DoneScreen
+- 5 컴포넌트: Header, Footer, StepIndicator, ConfirmModal, SettingsModal
+- 4 훅: useSSE (실시간 스트리밍), useSheetQueue (All Sheets), useNavigationGuard, useCountUp
+- SSE 실시간 스트리밍 + 자동 재연결 (지수 백오프 5회)
+- 세션 복원 (localStorage + getSessionState 동기화)
+- 통합 워크스페이스: loading↔ko_review, translating↔final_review 그룹 내 부드러운 전환
+- All Sheets 모드: 전체 시트 자동 순차 처리 (2초 딜레이)
+- Settings 모달: Glossary/시놉시스/톤앤매너/커스텀 프롬프트 웹 편집
+- Stitch 기반 디자인: Sky Blue + Inter 폰트 + Material Symbols Outlined
+- LCS Diff 하이라이팅, 캐스케이드 애니메이션, 프로그레스 시머 효과
+
 ---
 
 ## 구현 순서 및 의존 관계
@@ -104,6 +126,8 @@ Phase 5 (LangGraph 파이프라인) ✅
 Phase 6 (Streamlit UI) ✅
    ↓
 Phase 7 (통합 테스트) ✅
+   ↓
+Phase 8 (React+FastAPI 마이그레이션) ✅
 ```
 
 ---
@@ -120,3 +144,6 @@ Phase 7 (통합 테스트) ✅
 | 백업 파일 손실 (Streamlit Cloud) | 로컬 저장 + 다운로드 버튼 + session_state 보관 | 완료 |
 | LLM이 `\n` 태그를 실제 개행으로 변환 | JSON 파싱 후 `.replace('\n', '\\n')` 복원 | 완료 |
 | 같은 Key 성공+실패 시 Tool_Status 충돌 | failed_keys 우선 수집 → 실패 Key는 completed 스킵 | 완료 |
+| SSE 연결 끊김 시 상태 유실 | 자동 재연결 (지수 백오프 5회) + getSessionState() 동기화 | 완료 |
+| 브라우저 새로고침 시 세션 유실 | localStorage sessionId + 세션 복원 로직 | 완료 |
+| 대량 시트 순차 처리 | All Sheets 모드 + useSheetQueue 훅 (2초 딜레이) | 완료 |
