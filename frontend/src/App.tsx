@@ -5,6 +5,7 @@ import { useNavigationGuard } from "./hooks/useNavigationGuard";
 import { getSessionState } from "./api/client";
 import type { AppStep } from "./types";
 import Header from "./components/Header";
+import SettingsModal from "./components/SettingsModal";
 import DataSourceScreen from "./screens/DataSourceScreen";
 import KoReviewWorkspace from "./screens/KoReviewWorkspace";
 import TranslationWorkspace from "./screens/TranslationWorkspace";
@@ -168,6 +169,7 @@ export default function App() {
     <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-page font-display text-text-main antialiased">
       <Header />
       <AnimatedScreen />
+      <SettingsModal />
     </div>
   );
 }

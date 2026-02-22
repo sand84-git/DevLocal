@@ -1,22 +1,26 @@
-"""시스템 프롬프트 — 세계관, 톤앤매너, 가이드라인"""
+"""시스템 프롬프트 — 세계관, 톤앤매너, 가이드라인 (설정은 .app_config.json에서 로드)"""
 
-
-GAME_SYNOPSIS = """상자를 열기 전까지는 내용물을 알 수 없는 우주 최고 가챠 '슈뢰딩거 상자'로 대박을 터뜨린 우주 기업 카마존. \
-말단 배달 로봇 404가 배달 사고로 모든 상자를 잃어버리는데, \
-그 중 하나가 카마존 설립자가 주문한 전 우주에 하나 남은 단종된 한정판 '츄르'였다. \
-설립자의 전시 프로토콜 가동으로 외딴 행성에 불시착한 로봇 404의 츄르 찾기 대모험. \
-(외계인들은 상자에 중독되어 카마존 상자를 닥치는 대로 탐내는 상황)"""
-
-TONE_AND_MANNER = "너무 진지하지 않은 유머러스(Humorous)하고 캐주얼(Casual)한 톤을 철저히 유지."
+from config.glossary import get_game_synopsis, get_tone_and_manner
 
 
 def build_translator_prompt(
     target_lang: str,
     glossary_text: str,
-    synopsis: str = GAME_SYNOPSIS,
-    tone: str = TONE_AND_MANNER,
+    synopsis: str = "",
+    tone: str = "",
+    custom_prompt: str = "",
 ) -> str:
     """Translator Agent 시스템 프롬프트 생성"""
+    synopsis = synopsis or get_game_synopsis()
+    tone = tone or get_tone_and_manner()
+
+    custom_section = ""
+    if custom_prompt:
+        custom_section = f"""
+
+## 추가 지침 (사용자 커스텀)
+{custom_prompt}"""
+
     return f"""당신은 게임 로컬라이제이션 전문 번역가입니다.
 
 ## 게임 세계관
@@ -29,7 +33,7 @@ def build_translator_prompt(
 {target_lang}
 
 ## Glossary (고유명사 고정 규칙)
-{glossary_text}
+{glossary_text}{custom_section}
 
 ## 번역 규칙
 1. 원문의 모든 포맷팅 태그를 **절대 변경하지 말고 그대로** 보존하세요:
@@ -60,8 +64,16 @@ JSON 배열로 반환하세요:
 def build_reviewer_prompt(
     target_lang: str,
     glossary_text: str,
+    custom_prompt: str = "",
 ) -> str:
     """Reviewer Agent 시스템 프롬프트 생성"""
+    custom_section = ""
+    if custom_prompt:
+        custom_section = f"""
+
+## 추가 지침 (사용자 커스텀)
+{custom_prompt}"""
+
     return f"""당신은 게임 로컬라이제이션 검수 전문가입니다.
 
 ## 역할
@@ -71,7 +83,7 @@ def build_reviewer_prompt(
 {target_lang}
 
 ## Glossary (고유명사 고정 규칙)
-{glossary_text}
+{glossary_text}{custom_section}
 
 ## 검수 기준
 1. **태그 보존**: 원문의 모든 포맷팅 태그({{변수}}, <color>, \\n 등)가 번역에 동일하게 존재하는지 확인.

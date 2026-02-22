@@ -55,6 +55,11 @@ interface AppState {
   /* ── SSE Connection ── */
   sseStatus: "connected" | "reconnecting" | "disconnected";
 
+  /* ── Settings ── */
+  settingsOpen: boolean;
+  glossary: Record<string, Record<string, string>>;
+  customPrompts: Record<string, string>;
+
   /* ── Done ── */
   translationsApplied: boolean;
 
@@ -87,6 +92,9 @@ interface AppState {
   setProgress: (percent: number, label: string) => void;
   setSseStatus: (status: "connected" | "reconnecting" | "disconnected") => void;
   setTranslationsApplied: (applied: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
+  setGlossary: (glossary: Record<string, Record<string, string>>) => void;
+  setCustomPrompts: (prompts: Record<string, string>) => void;
   resetTranslationState: () => void;
   reset: () => void;
 }
@@ -120,6 +128,9 @@ const initialState = {
   progressPercent: 0,
   progressLabel: "",
   sseStatus: "disconnected" as const,
+  settingsOpen: false,
+  glossary: {} as Record<string, Record<string, string>>,
+  customPrompts: {} as Record<string, string>,
   translationsApplied: false,
 };
 
@@ -179,6 +190,9 @@ export const useAppStore = create<AppState>((set) => ({
     set({ progressPercent: percent, progressLabel: label }),
   setSseStatus: (status) => set({ sseStatus: status }),
   setTranslationsApplied: (applied) => set({ translationsApplied: applied }),
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setGlossary: (glossary) => set({ glossary }),
+  setCustomPrompts: (prompts) => set({ customPrompts: prompts }),
   resetTranslationState: () =>
     set({
       reviewResults: [],

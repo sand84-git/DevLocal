@@ -119,13 +119,14 @@ export default function Footer({
 
           <div className="h-8 w-px bg-slate-200" />
 
-          {/* Folder button */}
+          {/* Settings button */}
           <button
+            onClick={() => useAppStore.getState().setSettingsOpen(true)}
             className="flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 shadow-sm h-12 w-12 group"
-            title="Select Folder"
+            title="Custom Instructions & Glossary"
           >
             <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">
-              folder_open
+              tune
             </span>
           </button>
 

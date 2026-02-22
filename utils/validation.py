@@ -3,7 +3,7 @@
 import re
 
 from config.constants import TAG_PATTERNS
-from config.glossary import GLOSSARY
+from config.glossary import get_glossary
 
 
 def _normalize_escapes(text: str) -> str:
@@ -42,11 +42,11 @@ def apply_glossary_postprocess(text: str, lang: str) -> str:
     Glossary 강제 치환 (후처리).
     JA 등급명 등 고정 매핑이 있는 경우 파이썬 replace()로 강제 적용.
     """
-    if lang not in GLOSSARY:
+    glossary = get_glossary()
+    if lang not in glossary:
         return text
 
-    glossary = GLOSSARY[lang]
-    for ko_term, target_term in glossary.items():
+    for ko_term, target_term in glossary[lang].items():
         # 한국어 원어가 번역문에 남아있는 경우 치환
         text = text.replace(ko_term, target_term)
 
@@ -61,13 +61,13 @@ def check_glossary_compliance(text: str, lang: str, source_ko: str) -> dict:
     Returns:
         {"compliant": bool, "violations": [str]}
     """
-    if lang not in GLOSSARY:
+    glossary = get_glossary()
+    if lang not in glossary:
         return {"compliant": True, "violations": []}
 
     violations = []
-    glossary = GLOSSARY[lang]
 
-    for ko_term, target_term in glossary.items():
+    for ko_term, target_term in glossary[lang].items():
         if ko_term in source_ko and target_term not in text:
             violations.append(
                 f"Glossary 위반: '{ko_term}' → '{target_term}' 미적용"

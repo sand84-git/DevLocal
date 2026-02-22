@@ -14,16 +14,17 @@ from config.constants import (
     SUPPORTED_LANGUAGES,
 )
 from utils.drip_feed import drip_feed_emit
-from config.glossary import GLOSSARY
+from config.glossary import get_glossary
 
 
 def _format_glossary_text(lang: str) -> str:
-    """Glossary를 프롬프트용 텍스트로 변환"""
-    if lang not in GLOSSARY or not GLOSSARY[lang]:
+    """Glossary를 프롬프트용 텍스트로 변환 — 매 호출 시 최신 config 반영"""
+    glossary = get_glossary()
+    if lang not in glossary or not glossary[lang]:
         return "이 언어에 대한 고정 Glossary 없음. 일관성을 유지하여 자유 번역하세요."
 
     lines = []
-    for ko, target in GLOSSARY[lang].items():
+    for ko, target in glossary[lang].items():
         lines.append(f"- {ko} → {target}")
     return "\n".join(lines)
 
@@ -68,6 +69,9 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
     logs = list(state.get("logs", []))
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
+    custom_prompt = state.get("custom_prompt", "")
+    game_synopsis = state.get("game_synopsis", "")
+    tone_and_manner = state.get("tone_and_manner", "")
 
     api_key = get_xai_api_key()
 
@@ -80,7 +84,7 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
 
     for lang, items in retry_by_lang.items():
         glossary_text = _format_glossary_text(lang)
-        system_prompt = build_translator_prompt(lang, glossary_text)
+        system_prompt = build_translator_prompt(lang, glossary_text, synopsis=game_synopsis, tone=tone_and_manner, custom_prompt=custom_prompt)
         total_chunks = (len(items) + CHUNK_SIZE - 1) // CHUNK_SIZE
 
         logs.append(
@@ -180,6 +184,9 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
     logs = list(state.get("logs", []))
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
+    custom_prompt = state.get("custom_prompt", "")
+    game_synopsis = state.get("game_synopsis", "")
+    tone_and_manner = state.get("tone_and_manner", "")
 
     # 한국어 검수 승인 시, 수정된 텍스트 적용
     working_data = []
@@ -226,7 +233,7 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
 
         # 청크 단위 처리
         glossary_text = _format_glossary_text(lang)
-        system_prompt = build_translator_prompt(lang, glossary_text)
+        system_prompt = build_translator_prompt(lang, glossary_text, synopsis=game_synopsis, tone=tone_and_manner, custom_prompt=custom_prompt)
         total_chunks = (len(target_rows) + CHUNK_SIZE - 1) // CHUNK_SIZE
 
         for chunk_idx in range(total_chunks):

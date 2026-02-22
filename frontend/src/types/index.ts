@@ -147,4 +147,8 @@ export interface AppConfig {
   saved_sheet?: string;
   backup_folder?: string;
   bot_email?: string;
+  glossary?: Record<string, Record<string, string>>;
+  custom_prompts?: Record<string, string>;
+  game_synopsis?: string;
+  tone_and_manner?: string;
 }

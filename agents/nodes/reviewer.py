@@ -14,7 +14,7 @@ from config.constants import (
     SUPPORTED_LANGUAGES,
 )
 from utils.drip_feed import drip_feed_emit
-from config.glossary import GLOSSARY
+from config.glossary import get_glossary
 from utils.validation import (
     apply_glossary_postprocess,
     check_glossary_compliance,
@@ -23,9 +23,10 @@ from utils.validation import (
 
 
 def _format_glossary_text(lang: str) -> str:
-    if lang not in GLOSSARY or not GLOSSARY[lang]:
+    glossary = get_glossary()
+    if lang not in glossary or not glossary[lang]:
         return "고정 Glossary 없음."
-    lines = [f"- {ko} → {target}" for ko, target in GLOSSARY[lang].items()]
+    lines = [f"- {ko} → {target}" for ko, target in glossary[lang].items()]
     return "\n".join(lines)
 
 
@@ -68,6 +69,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
     logs = list(state.get("logs", []))
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
+    custom_prompt = state.get("custom_prompt", "")
 
     # 원본 데이터 맵 구축
     original_map = {}
@@ -193,7 +195,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
 
     for lang, items in lang_groups.items():
         glossary_text = _format_glossary_text(lang)
-        system_prompt = build_reviewer_prompt(lang, glossary_text)
+        system_prompt = build_reviewer_prompt(lang, glossary_text, custom_prompt=custom_prompt)
         total_chunks = (len(items) + CHUNK_SIZE - 1) // CHUNK_SIZE
 
         for chunk_idx in range(total_chunks):

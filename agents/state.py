@@ -39,6 +39,13 @@ class LocalizationState(TypedDict):
     # 로그
     logs: list[str]
 
+    # 사용자 커스텀 지침 (시트별)
+    custom_prompt: str
+
+    # 게임 설정 (Settings UI에서 편집)
+    game_synopsis: str
+    tone_and_manner: str
+
     # 내부 전달용
     _updates: list[dict]          # writer → app.py 시트 업데이트 목록
     _needs_retry: list[dict]      # reviewer → translator 재번역 필요 항목

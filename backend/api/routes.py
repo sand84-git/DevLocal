@@ -113,6 +113,15 @@ def api_start(req: StartRequest):
         session.backup_filename = filename
         session.backup_csv = csv_bytes
 
+        # 게임 설정 로드 (커스텀 프롬프트, 시놉시스, 톤앤매너)
+        from config.glossary import get_game_synopsis, get_tone_and_manner
+
+        app_cfg = _load_config()
+        custom_prompts = app_cfg.get("custom_prompts", {})
+        custom_prompt = custom_prompts.get(req.sheet_name, "")
+        game_synopsis = app_cfg.get("game_synopsis") or get_game_synopsis()
+        tone_and_manner = app_cfg.get("tone_and_manner") or get_tone_and_manner()
+
         # 초기 state 저장
         session.initial_state = {
             "sheet_name": req.sheet_name,
@@ -138,6 +147,9 @@ def api_start(req: StartRequest):
             "logs": [],
             "_updates": [],
             "_needs_retry": [],
+            "custom_prompt": custom_prompt,
+            "game_synopsis": game_synopsis,
+            "tone_and_manner": tone_and_manner,
         }
         session.current_step = "loading"
         logger.info("Pipeline started: session=%s, sheet=%s, mode=%s",
@@ -663,9 +675,18 @@ def api_download(session_id: str, file_type: str):
 
 @router.get("/config")
 def api_get_config():
-    """저장된 설정 조회 (bot_email 포함)"""
+    """저장된 설정 조회 (bot_email 포함, 기본값 병합)"""
+    from config.glossary import get_glossary, get_game_synopsis, get_tone_and_manner
+
     cfg = _load_config()
     cfg["bot_email"] = get_bot_email()
+    # 기본값 병합 — 파일에 없으면 fallback 포함
+    if "glossary" not in cfg:
+        cfg["glossary"] = get_glossary()
+    if "game_synopsis" not in cfg:
+        cfg["game_synopsis"] = get_game_synopsis()
+    if "tone_and_manner" not in cfg:
+        cfg["tone_and_manner"] = get_tone_and_manner()
     return cfg
 
 
