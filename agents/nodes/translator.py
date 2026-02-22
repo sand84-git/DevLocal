@@ -70,6 +70,7 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
     total_reasoning_tokens = state.get("total_reasoning_tokens", 0)
+    total_cached_tokens = state.get("total_cached_tokens", 0)
     custom_prompt = state.get("custom_prompt", "")
     game_synopsis = state.get("game_synopsis", "")
     tone_and_manner = state.get("tone_and_manner", "")
@@ -122,6 +123,8 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
                 )
                 if hasattr(response.usage, "completion_tokens_details") and response.usage.completion_tokens_details:
                     total_reasoning_tokens += getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0) or 0
+                if hasattr(response.usage, "prompt_tokens_details") and response.usage.prompt_tokens_details:
+                    total_cached_tokens += getattr(response.usage.prompt_tokens_details, "cached_tokens", 0) or 0
 
                 content = response.choices[0].message.content.strip()
                 if content.startswith("```"):
@@ -157,6 +160,7 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
         "total_reasoning_tokens": total_reasoning_tokens,
+        "total_cached_tokens": total_cached_tokens,
         "retry_count": retry_count,
         "logs": logs,
     }
@@ -189,6 +193,7 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
     total_reasoning_tokens = state.get("total_reasoning_tokens", 0)
+    total_cached_tokens = state.get("total_cached_tokens", 0)
     custom_prompt = state.get("custom_prompt", "")
     game_synopsis = state.get("game_synopsis", "")
     tone_and_manner = state.get("tone_and_manner", "")
@@ -271,6 +276,8 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
                 )
                 if hasattr(response.usage, "completion_tokens_details") and response.usage.completion_tokens_details:
                     total_reasoning_tokens += getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0) or 0
+                if hasattr(response.usage, "prompt_tokens_details") and response.usage.prompt_tokens_details:
+                    total_cached_tokens += getattr(response.usage.prompt_tokens_details, "cached_tokens", 0) or 0
 
                 content = response.choices[0].message.content.strip()
                 # JSON 파싱 — 코드블록 제거
@@ -324,6 +331,7 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
         "total_reasoning_tokens": total_reasoning_tokens,
+        "total_cached_tokens": total_cached_tokens,
         "retry_count": retry_count,
         "logs": logs,
     }

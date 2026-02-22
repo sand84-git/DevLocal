@@ -46,7 +46,7 @@ SUPPORTED_LANGUAGES = {
 }
 
 # LLM 번역 청크 크기 (행 수)
-CHUNK_SIZE = 15
+CHUNK_SIZE = 25
 
 # Reviewer 최대 재시도 횟수
 MAX_RETRY_COUNT = 3

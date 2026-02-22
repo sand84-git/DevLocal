@@ -129,7 +129,7 @@ utils/ui_components.py    # (Legacy) Streamlit UI 컴포넌트
 - Google Sheets: 개별 cell.update() 금지 → 반드시 Batch Update
 - Google Sheets: 1회 전체 로드 후 DataFrame 내에서 작업
 - HITL 2단계: 한국어 검수 승인 → 최종 번역 승인 (interrupt 2곳)
-- LLM 호출은 반드시 청크 배치(CHUNK_SIZE=15) + timeout=120s 적용
+- LLM 호출은 반드시 청크 배치(CHUNK_SIZE=25) + timeout=120s 적용
 - Reviewer도 청크 배치 호출 (개별 호출 절대 금지 — rate limit 및 멈춤 원인)
 - 번역 에러 시 그래프 재생성 후 idle로 복구 (translating 멈춤 상태 방지)
 - Writer: 원본 값과 비교하여 실제 변경된 셀만 시트 업데이트 & 컬러링
@@ -140,9 +140,10 @@ utils/ui_components.py    # (Legacy) Streamlit UI 컴포넌트
 
 ## LLM 설정
 - **모델**: `xai/grok-4-1-fast-reasoning`
-- **CHUNK_SIZE**: 15행 (번역/검수 모두 동일)
+- **CHUNK_SIZE**: 25행 (번역/검수 모두 동일)
 - **timeout**: 120초 (모든 LLM 호출)
 - **가격**: input $0.20/1M, output $0.50/1M, cached $0.05/1M
+- **주의**: xAI/Grok은 `completion_tokens`와 `reasoning_tokens`를 별도 리포트 (합산 필요)
 
 ## Secrets 위치
 **React+FastAPI (현재)**:

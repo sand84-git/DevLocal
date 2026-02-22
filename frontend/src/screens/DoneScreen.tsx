@@ -15,6 +15,8 @@ export default function DoneScreen() {
   const totalTokens = costSummary
     ? costSummary.input_tokens + costSummary.output_tokens + (costSummary.reasoning_tokens ?? 0)
     : 0;
+  const cachedTokens = costSummary?.cached_tokens ?? 0;
+  const reasoningTokens = costSummary?.reasoning_tokens ?? 0;
   const estimatedCost = costSummary?.estimated_cost_usd ?? 0;
   const failedRows = useAppStore((s) => s.failedRows);
   const langCount = new Set(reviewResults.map((r) => r.lang)).size;
@@ -82,6 +84,10 @@ export default function DoneScreen() {
               iconColor="bg-orange-50 text-orange-500"
               label="Tokens Used"
               value={totalTokens.toLocaleString()}
+              sub={[
+                cachedTokens > 0 ? `Cached: ${cachedTokens.toLocaleString()}` : "",
+                reasoningTokens > 0 ? `Reasoning: ${reasoningTokens.toLocaleString()}` : "",
+              ].filter(Boolean).join(" · ") || undefined}
               badge="Grok"
             />
             <MetricCard
@@ -130,12 +136,14 @@ function MetricCard({
   label,
   value,
   badge,
+  sub,
 }: {
   icon: string;
   iconColor: string;
   label: string;
   value: string;
   badge: string;
+  sub?: string;
 }) {
   return (
     <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl shadow-soft hover:shadow-md transition-shadow duration-200 flex flex-col items-center text-center">
@@ -146,6 +154,9 @@ function MetricCard({
         {label}
       </p>
       <p className="text-3xl font-bold text-text-main mb-2">{value}</p>
+      {sub && (
+        <p className="text-xs text-text-muted mb-1">{sub}</p>
+      )}
       {badge && (
         <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-surface-pale text-text-muted">
           {badge}

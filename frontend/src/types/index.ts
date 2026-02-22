@@ -55,6 +55,7 @@ export interface CostSummary {
   input_tokens: number;
   output_tokens: number;
   reasoning_tokens: number;
+  cached_tokens: number;
   estimated_cost_usd: number;
 }
 

@@ -70,6 +70,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
     total_input_tokens = state.get("total_input_tokens", 0)
     total_output_tokens = state.get("total_output_tokens", 0)
     total_reasoning_tokens = state.get("total_reasoning_tokens", 0)
+    total_cached_tokens = state.get("total_cached_tokens", 0)
     custom_prompt = state.get("custom_prompt", "")
 
     # 원본 데이터 맵 구축
@@ -234,6 +235,8 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
                 )
                 if hasattr(response.usage, "completion_tokens_details") and response.usage.completion_tokens_details:
                     total_reasoning_tokens += getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0) or 0
+                if hasattr(response.usage, "prompt_tokens_details") and response.usage.prompt_tokens_details:
+                    total_cached_tokens += getattr(response.usage.prompt_tokens_details, "cached_tokens", 0) or 0
 
                 content = response.choices[0].message.content.strip()
                 if content.startswith("```"):
@@ -318,5 +321,6 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
         "total_reasoning_tokens": total_reasoning_tokens,
+        "total_cached_tokens": total_cached_tokens,
         "logs": logs,
     }

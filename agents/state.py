@@ -36,6 +36,7 @@ class LocalizationState(TypedDict):
     total_input_tokens: int
     total_output_tokens: int
     total_reasoning_tokens: int
+    total_cached_tokens: int
 
     # 로그
     logs: list[str]
