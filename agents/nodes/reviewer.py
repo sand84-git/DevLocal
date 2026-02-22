@@ -14,20 +14,13 @@ from config.constants import (
     SUPPORTED_LANGUAGES,
 )
 from utils.drip_feed import drip_feed_emit
-from config.glossary import get_glossary
+from config.glossary import format_glossary_text
 from utils.validation import (
     apply_glossary_postprocess,
     check_glossary_compliance,
     validate_tags,
 )
 
-
-def _format_glossary_text(lang: str) -> str:
-    glossary = get_glossary()
-    if lang not in glossary or not glossary[lang]:
-        return "고정 Glossary 없음."
-    lines = [f"- {ko} → {target}" for ko, target in glossary[lang].items()]
-    return "\n".join(lines)
 
 
 def _build_review_prompt_batch(items_for_review: list[dict]) -> str:
@@ -72,6 +65,8 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
     total_reasoning_tokens = state.get("total_reasoning_tokens", 0)
     total_cached_tokens = state.get("total_cached_tokens", 0)
     custom_prompt = state.get("custom_prompt", "")
+    game_synopsis = state.get("game_synopsis", "")
+    tone_and_manner = state.get("tone_and_manner", "")
 
     # 원본 데이터 맵 구축
     original_map = {}
@@ -196,8 +191,8 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
     cumulative_done = len(prev_review_results)
 
     for lang, items in lang_groups.items():
-        glossary_text = _format_glossary_text(lang)
-        system_prompt = build_reviewer_prompt(lang, glossary_text, custom_prompt=custom_prompt)
+        glossary_text = format_glossary_text(lang)
+        system_prompt = build_reviewer_prompt(lang, glossary_text, synopsis=game_synopsis, tone=tone_and_manner, custom_prompt=custom_prompt)
         total_chunks = (len(items) + CHUNK_SIZE - 1) // CHUNK_SIZE
 
         for chunk_idx in range(total_chunks):

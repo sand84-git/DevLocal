@@ -76,3 +76,12 @@ def get_tone_and_manner() -> str:
     if tone and isinstance(tone, str):
         return tone
     return _DEFAULT_TONE_AND_MANNER
+
+
+def format_glossary_text(lang: str) -> str:
+    """Glossary를 프롬프트용 텍스트로 변환 — 매 호출 시 최신 config 반영."""
+    glossary = get_glossary()
+    if lang not in glossary or not glossary[lang]:
+        return "이 언어에 대한 고정 Glossary 없음. 일관성을 유지하여 자유 번역하세요."
+    lines = [f"- {ko} → {target}" for ko, target in glossary[lang].items()]
+    return "\n".join(lines)

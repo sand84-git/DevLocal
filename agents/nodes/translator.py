@@ -14,19 +14,7 @@ from config.constants import (
     SUPPORTED_LANGUAGES,
 )
 from utils.drip_feed import drip_feed_emit
-from config.glossary import get_glossary
-
-
-def _format_glossary_text(lang: str) -> str:
-    """Glossary를 프롬프트용 텍스트로 변환 — 매 호출 시 최신 config 반영"""
-    glossary = get_glossary()
-    if lang not in glossary or not glossary[lang]:
-        return "이 언어에 대한 고정 Glossary 없음. 일관성을 유지하여 자유 번역하세요."
-
-    lines = []
-    for ko, target in glossary[lang].items():
-        lines.append(f"- {ko} → {target}")
-    return "\n".join(lines)
+from config.glossary import format_glossary_text
 
 
 def _build_translation_prompt(rows: list[dict], lang: str) -> str:
@@ -85,7 +73,7 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
     all_results = []
 
     for lang, items in retry_by_lang.items():
-        glossary_text = _format_glossary_text(lang)
+        glossary_text = format_glossary_text(lang)
         system_prompt = build_translator_prompt(lang, glossary_text, synopsis=game_synopsis, tone=tone_and_manner, custom_prompt=custom_prompt)
         total_chunks = (len(items) + CHUNK_SIZE - 1) // CHUNK_SIZE
 
@@ -242,7 +230,7 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
         logs.append(f"[Node 3] {lang.upper()} 번역 대상: {len(target_rows)}행")
 
         # 청크 단위 처리
-        glossary_text = _format_glossary_text(lang)
+        glossary_text = format_glossary_text(lang)
         system_prompt = build_translator_prompt(lang, glossary_text, synopsis=game_synopsis, tone=tone_and_manner, custom_prompt=custom_prompt)
         total_chunks = (len(target_rows) + CHUNK_SIZE - 1) // CHUNK_SIZE
 

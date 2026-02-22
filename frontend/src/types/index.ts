@@ -108,7 +108,12 @@ export interface FinalReviewReadyData {
   review_results: ReviewItem[];
   failed_rows: FailedRow[];
   report: Record<string, unknown>[] | null;
-  cost: { input_tokens: number; output_tokens: number };
+  cost: {
+    input_tokens: number;
+    output_tokens: number;
+    reasoning_tokens?: number;
+    cached_tokens?: number;
+  };
 }
 
 /* ── Chunk Streaming Types ── */

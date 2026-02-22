@@ -64,9 +64,14 @@ JSON 배열로 반환하세요:
 def build_reviewer_prompt(
     target_lang: str,
     glossary_text: str,
+    synopsis: str = "",
+    tone: str = "",
     custom_prompt: str = "",
 ) -> str:
     """Reviewer Agent 시스템 프롬프트 생성"""
+    synopsis = synopsis or get_game_synopsis()
+    tone = tone or get_tone_and_manner()
+
     custom_section = ""
     if custom_prompt:
         custom_section = f"""
@@ -78,6 +83,12 @@ def build_reviewer_prompt(
 
 ## 역할
 번역 결과물을 원본(한국어)과 엄격하게 크로스체크합니다.
+
+## 게임 세계관
+{synopsis}
+
+## 톤앤매너
+{tone}
 
 ## 타겟 언어
 {target_lang}
