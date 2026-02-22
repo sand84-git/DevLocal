@@ -126,6 +126,10 @@ export default function App() {
         s.setSessionId(savedId);
         s.setLogs(state.logs);
         s.setTotalRows(state.total_rows ?? 0);
+        // 테이블 복원용 original_rows
+        if (state.original_rows) {
+          s.setOriginalRows(state.original_rows);
+        }
 
         if (state.current_step === "ko_review" && state.ko_review_results) {
           s.setKoReviewResults(state.ko_review_results);

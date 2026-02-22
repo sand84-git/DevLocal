@@ -711,15 +711,18 @@ export default function KoReviewWorkspace() {
       </main>
 
       {/* ═══ Footer ═══ */}
-      {(mode === "review" || isComplete) && (
+      {mode === "loading" ? (
+        <Footer
+          showCancel
+          onCancel={handleBack}
+          actionLabel="Loading..."
+          actionDisabled
+        />
+      ) : (
         <Footer
           onBack={handleBack}
-          onAction={mode === "review" ? handleApproveClick : undefined}
-          actionLabel={
-            mode === "review"
-              ? (submitting ? "Processing..." : "Confirm & Next Step")
-              : "Preparing review..."
-          }
+          onAction={handleApproveClick}
+          actionLabel={submitting ? "Processing..." : "Confirm & Next Step"}
           actionDisabled={mode !== "review" || submitting}
         />
       )}

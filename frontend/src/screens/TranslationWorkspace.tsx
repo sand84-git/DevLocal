@@ -39,6 +39,7 @@ export default function TranslationWorkspace() {
 
   /* ── Local State ── */
   const [page, setPage] = useState(1);
+  const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -196,7 +197,8 @@ export default function TranslationWorkspace() {
 
   /* ── Handlers ── */
   async function handleCancel() {
-    if (!sessionId) return;
+    if (!sessionId || cancelling) return;
+    setCancelling(true);
     setCancelError(null);
     try {
       await cancelTranslation(sessionId);
@@ -205,6 +207,8 @@ export default function TranslationWorkspace() {
       setCancelError(
         `Cancel failed: ${e instanceof Error ? e.message : "Unknown error"}`,
       );
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -853,7 +857,7 @@ export default function TranslationWorkspace() {
                               </span>
                             )
                           ) : row.rowStatus === "pending" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-400 animate-badge-enter">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-400 animate-breathe">
                               <span className="material-symbols-outlined text-sm">
                                 hourglass_empty
                               </span>
@@ -911,8 +915,8 @@ export default function TranslationWorkspace() {
       {mode === "translating" ? (
         <Footer
           showCancel
-          onCancel={handleCancel}
-          actionLabel="Translating..."
+          onCancel={cancelling ? undefined : handleCancel}
+          actionLabel={cancelling ? "Cancelling..." : "Translating..."}
           actionDisabled
         />
       ) : (

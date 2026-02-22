@@ -55,6 +55,10 @@ export function useSSE() {
             .then((state) => {
               const s = store();
               const cur = s.currentStep;
+              // 테이블 복원용 original_rows
+              if (state.original_rows && s.originalRows.length === 0) {
+                s.setOriginalRows(state.original_rows);
+              }
               // 백엔드가 이미 다음 단계로 진행했으면 프론트도 전환
               if (state.current_step === "ko_review" && cur !== "ko_review" && state.ko_review_results) {
                 s.setKoReviewResults(state.ko_review_results);

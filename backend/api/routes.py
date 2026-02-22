@@ -178,18 +178,16 @@ def _make_config_with_emitter(session):
 
 def _run_initial_phase(session):
     """초기 phase 실행 (data_backup → context_glossary → ko_review → ko_approval interrupt)"""
+    emitter = _make_emitter(session)
     try:
         config = _make_config_with_emitter(session)
-        emitter = config["configurable"]["event_emitter"]
+        node_emitter = config["configurable"]["event_emitter"]
 
         for event in session.graph.stream(
             session.initial_state, config=config, stream_mode="updates"
         ):
             if "__interrupt__" in event:
-                asyncio.run_coroutine_threadsafe(
-                    session.event_queue.put(("interrupt", {})),
-                    session._loop,
-                )
+                emitter("interrupt", {})
                 break
 
             node_name = list(event.keys())[0]
@@ -205,16 +203,13 @@ def _run_initial_phase(session):
                          "korean": r.get(REQUIRED_COLUMNS["korean"], "")}
                         for r in orig_data
                     ]
-                    emitter("original_data", {"rows": rows})
+                    node_emitter("original_data", {"rows": rows})
 
-            asyncio.run_coroutine_threadsafe(
-                session.event_queue.put(("node_update", {
-                    "node": node_name,
-                    "step": "loading",
-                    "logs": node_logs,
-                })),
-                session._loop,
-            )
+            emitter("node_update", {
+                "node": node_name,
+                "step": "loading",
+                "logs": node_logs,
+            })
 
         # ko_review 결과 수집
         state_snapshot = session.graph.get_state(session.config)
@@ -260,20 +255,14 @@ def _run_initial_phase(session):
             session.ko_report_csv = report_csv
             ko_report_data = report_df.to_dict("records")
 
-        asyncio.run_coroutine_threadsafe(
-            session.event_queue.put(("ko_review_ready", {
-                "results": ko_results,
-                "count": len(ko_results),
-                "report": ko_report_data,
-            })),
-            session._loop,
-        )
+        emitter("ko_review_ready", {
+            "results": ko_results,
+            "count": len(ko_results),
+            "report": ko_report_data,
+        })
     except Exception as e:
         logger.error("Initial phase error for session %s: %s", session.id, e, exc_info=True)
-        asyncio.run_coroutine_threadsafe(
-            session.event_queue.put(("error", {"message": str(e)})),
-            session._loop,
-        )
+        emitter("error", {"message": str(e)})
 
 
 @router.get("/stream/{session_id}")
@@ -319,6 +308,7 @@ async def api_stream(session_id: str):
 
 def _run_translation_phase(session, resume_value: str):
     """번역 phase 실행 (translator → reviewer → final_approval interrupt)"""
+    emitter = _make_emitter(session)
     try:
         config = _make_config_with_emitter(session)
 
@@ -332,14 +322,11 @@ def _run_translation_phase(session, resume_value: str):
             node_output = event[node_name]
             node_logs = node_output.get("logs", [])
 
-            asyncio.run_coroutine_threadsafe(
-                session.event_queue.put(("node_update", {
-                    "node": node_name,
-                    "step": "translating",
-                    "logs": node_logs,
-                })),
-                session._loop,
-            )
+            emitter("node_update", {
+                "node": node_name,
+                "step": "translating",
+                "logs": node_logs,
+            })
 
         # 결과 수집
         state_snapshot = session.graph.get_state(session.config)
@@ -367,21 +354,15 @@ def _run_translation_phase(session, resume_value: str):
             "output_tokens": result.get("total_output_tokens", 0),
         }
 
-        asyncio.run_coroutine_threadsafe(
-            session.event_queue.put(("final_review_ready", {
-                "review_results": review_results,
-                "failed_rows": result.get("failed_rows", []),
-                "report": report_data,
-                "cost": cost_summary,
-            })),
-            session._loop,
-        )
+        emitter("final_review_ready", {
+            "review_results": review_results,
+            "failed_rows": result.get("failed_rows", []),
+            "report": report_data,
+            "cost": cost_summary,
+        })
     except Exception as e:
         logger.error("Translation phase error for session %s: %s", session.id, e, exc_info=True)
-        asyncio.run_coroutine_threadsafe(
-            session.event_queue.put(("error", {"message": str(e)})),
-            session._loop,
-        )
+        emitter("error", {"message": str(e)})
 
 
 @router.post("/approve-ko/{session_id}")
@@ -480,6 +461,12 @@ def api_cancel(session_id: str):
 
     logger.info("Cancel: session=%s", session_id)
 
+    # ── 이전 SSE 무효화 (race condition 방지) ──
+    # 기존 SSE event_generator 루프를 종료시켜 이전 번역 스레드의 이벤트가
+    # 프론트엔드에 도달하지 않도록 함
+    session._sse_generation += 1
+    session.event_queue = None
+
     from agents.graph import build_graph
 
     # 그래프 재생성
@@ -521,6 +508,7 @@ def api_state(session_id: str):
     ko_review_results = None
     review_results_data = None
     failed_rows_data = None
+    original_rows_data = None
 
     if session.graph_result:
         ko_count = len(session.graph_result.get("ko_review_results", []))
@@ -535,6 +523,15 @@ def api_state(session_id: str):
             "output_tokens": output_t,
             "estimated_cost_usd": round(cost, 4),
         }
+
+        # 세션 복원용: 테이블 표시를 위한 original_rows (loading/translating 포함)
+        orig = session.graph_result.get("original_data", [])
+        if orig:
+            original_rows_data = [
+                {"key": r.get(REQUIRED_COLUMNS["key"], ""),
+                 "korean": r.get(REQUIRED_COLUMNS["korean"], "")}
+                for r in orig
+            ]
 
         # 세션 복원용: HITL 대기 단계일 때 실제 데이터 포함
         if session.current_step == "ko_review":
@@ -567,6 +564,7 @@ def api_state(session_id: str):
         ko_review_results=ko_review_results,
         review_results=review_results_data,
         failed_rows=failed_rows_data,
+        original_rows=original_rows_data,
         total_rows=total_rows,
     )
 
