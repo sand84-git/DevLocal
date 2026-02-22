@@ -62,20 +62,6 @@ export default function Footer({
           </button>
         )}
 
-        {/* Discard button (Back 옆) */}
-        {showDiscard && (
-          <button
-            type="button"
-            onClick={onDiscard}
-            aria-label="변경사항 폐기"
-            className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
-            title="Discard all changes"
-          >
-            <span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span>
-            Discard
-          </button>
-        )}
-
         {/* Right: Controls */}
         <div className="flex items-center gap-6">
           {/* Scope pill toggle */}
@@ -154,6 +140,21 @@ export default function Footer({
               className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors duration-200 shadow-sm text-sm"
             >
               Export JSON
+            </button>
+          )}
+
+          {/* Discard button */}
+          {showDiscard && (
+            <button
+              type="button"
+              onClick={onDiscard}
+              aria-label="변경사항 폐기"
+              className="flex items-center justify-center rounded-xl border border-red-200 bg-white text-red-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500 transition-all duration-200 shadow-sm h-12 w-12 group"
+              title="Discard all changes"
+            >
+              <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform" aria-hidden="true">
+                delete
+              </span>
             </button>
           )}
 
