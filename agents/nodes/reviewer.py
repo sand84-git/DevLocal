@@ -168,12 +168,28 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
         f"재시도 {len(needs_retry_items)}건"
     )
 
-    # ── Step 4: AI 품질 검증 (청크 배치 LLM 호출) ──
+    # ── Step 4+5: AI 품질 검증 + 결합 + 청크별 drip-feed emit ──
     lang_groups: dict[str, list[dict]] = {}
     for item in validated_items:
         lang_groups.setdefault(item["lang"], []).append(item)
 
-    ai_review_map: dict[tuple[str, str], dict] = {}
+    # 전체 진행률 기준 (초기 신호 + 청크별 emit 모두 동일 total 사용)
+    progress_total = len(prev_review_results) + len(validated_items) + len(needs_retry_items)
+    if progress_total == 0:
+        progress_total = max(len(prev_review_results) + len(failed_rows), 1)
+
+    # 초기 진행률 신호 — LLM 호출 전 즉시 발행하여 프론트엔드 agentPhase 전환
+    if emitter:
+        emitter("review_chunk", {
+            "chunk_results": [],
+            "progress": {
+                "done": len(prev_review_results),
+                "total": progress_total,
+            },
+        })
+
+    new_review_results = []
+    cumulative_done = len(prev_review_results)
 
     for lang, items in lang_groups.items():
         glossary_text = _format_glossary_text(lang)
@@ -196,6 +212,8 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
                 f"({len(chunk)}건) 처리 중..."
             )
 
+            # LLM 호출
+            chunk_ai_map: dict[str, dict] = {}
             try:
                 response = litellm.completion(
                     model=LLM_MODEL,
@@ -220,55 +238,67 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
                 if isinstance(review_items, list):
                     for ri in review_items:
                         ri_key = ri.get("key", "")
-                        ai_review_map[(ri_key, lang)] = ri
+                        chunk_ai_map[ri_key] = ri
 
             except Exception as e:
                 logs.append(
                     f"[Node 4] AI 검수 오류 (청크 {chunk_idx + 1}): {e}"
                 )
 
-    # ── 최종 review_results 조합 ──
-    new_review_results = []
-    for item in validated_items:
-        key = item["key"]
-        lang = item["lang"]
-        warnings = list(item["warnings"])
+            # 이 청크의 결과 즉시 결합
+            chunk_results = []
+            for item in chunk:
+                key = item["key"]
+                warnings = list(item["warnings"])
 
-        ai_result = ai_review_map.get((key, lang), {})
-        reason = ai_result.get("reason", "")
+                ai_result = chunk_ai_map.get(key, {})
+                reason = ai_result.get("reason", "")
 
-        if ai_result.get("status") == "fail":
-            ai_issues = ai_result.get("issues", [])
-            warnings.extend(ai_issues)
-            logs.append(
-                f"[Node 4] AI 검수 경고 — {key} ({lang}): {'; '.join(ai_issues)}"
-            )
+                if ai_result.get("status") == "fail":
+                    ai_issues = ai_result.get("issues", [])
+                    warnings.extend(ai_issues)
+                    logs.append(
+                        f"[Node 4] AI 검수 경고 — {key} ({lang}): {'; '.join(ai_issues)}"
+                    )
 
-        if warnings and not reason:
-            reason = "; ".join(warnings)
-        elif warnings and reason:
-            reason = f"{reason} | 경고: {'; '.join(warnings)}"
+                if warnings and not reason:
+                    reason = "; ".join(warnings)
+                elif warnings and reason:
+                    reason = f"{reason} | 경고: {'; '.join(warnings)}"
 
-        new_review_results.append({
-            "key": key,
-            "lang": lang,
-            "translated": item["translated"],
-            "old_translation": item["old_translation"],
-            "original_ko": item["source_ko"],
-            "reason": reason,
-        })
+                chunk_results.append({
+                    "key": key,
+                    "lang": lang,
+                    "translated": item["translated"],
+                    "old_translation": item["old_translation"],
+                    "original_ko": item["source_ko"],
+                    "reason": reason,
+                })
+
+            new_review_results.extend(chunk_results)
+
+            # 청크별 drip-feed emit
+            if emitter and chunk_results:
+                drip_feed_emit(
+                    emitter,
+                    "review_chunk",
+                    chunk_results,
+                    progress_base=cumulative_done,
+                    total=progress_total,
+                )
+                cumulative_done += len(chunk_results)
 
     all_review_results = prev_review_results + new_review_results
 
-    # 검수 완료 결과를 1행씩 drip-feed 전송
-    if emitter and new_review_results:
-        drip_feed_emit(
-            emitter,
-            "review_chunk",
-            new_review_results,
-            progress_base=len(prev_review_results),
-            total=len(all_review_results) + len(needs_retry_items),
-        )
+    # validated_items가 비어있을 때도 progress 이벤트 보장 (엣지 케이스)
+    if emitter and not new_review_results:
+        emitter("review_chunk", {
+            "chunk_results": [],
+            "progress": {
+                "done": len(all_review_results),
+                "total": progress_total,
+            },
+        })
 
     logs.append(
         f"[Node 4] 검수 완료: 누적 통과 {len(all_review_results)}건, "

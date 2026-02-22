@@ -59,8 +59,11 @@ export default function KoReviewWorkspace() {
     () => koReviewResults.filter((r) => r.has_issue),
     [koReviewResults],
   );
+  const okCount = koReviewResults.length - issueItems.length;
   const decidedCount = Object.keys(koDecisions).length;
   const totalIssues = issueItems.length;
+  const doneCount = okCount + decidedCount;
+  const pendingCount = Math.max(0, totalIssues - decidedCount);
 
   /* ── Derived — Loading mode ── */
   const isComplete = progressPercent >= 100;
@@ -270,7 +273,7 @@ export default function KoReviewWorkspace() {
                         Done
                       </span>
                       <span className="text-sm font-bold text-text-main tabular-nums">
-                        {decidedCount}
+                        {doneCount}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -279,7 +282,7 @@ export default function KoReviewWorkspace() {
                         Pending
                       </span>
                       <span className="text-sm font-bold text-text-main tabular-nums">
-                        {Math.max(0, totalIssues - decidedCount)}
+                        {pendingCount}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -475,14 +478,14 @@ export default function KoReviewWorkspace() {
                               <td className="px-4 py-3 text-center">
                                 {isDone ? (
                                   hasIssue ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-fade-in">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600">
                                       <span className="material-symbols-outlined text-sm">
                                         edit_note
                                       </span>
                                       Revised
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-fade-in">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
                                       <span className="material-symbols-outlined text-sm">
                                         check
                                       </span>
@@ -490,7 +493,7 @@ export default function KoReviewWorkspace() {
                                     </span>
                                   )
                                 ) : agentPhase === "complete" ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-fade-in">
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
                                     <span className="material-symbols-outlined text-sm">
                                       check
                                     </span>
