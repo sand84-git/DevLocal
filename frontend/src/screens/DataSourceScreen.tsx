@@ -31,13 +31,44 @@ export default function DataSourceScreen() {
   const [synopsis, setSynopsis] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [rowRangeError, setRowRangeError] = useState<string | null>(null);
+  const [urlEditing, setUrlEditing] = useState(true);
 
-  // Load saved config on mount
+  // 저장된 URL로 자동 연결하는 헬퍼
+  async function autoConnect(url: string) {
+    const urlErr = validateSheetUrl(url);
+    if (urlErr) return;
+    setConnecting(true);
+    setError("");
+    setUrlError(null);
+    try {
+      const res = await connectSheet({ sheet_url: url });
+      setSheetNames(res.sheet_names);
+      setBotEmail(res.bot_email);
+      if (res.project_name) setProjectName(res.project_name);
+      if (res.sheet_names.length > 0) {
+        const savedSheet = useAppStore.getState().selectedSheet;
+        if (!savedSheet || !res.sheet_names.includes(savedSheet)) {
+          setSelectedSheet(res.sheet_names[0]);
+        }
+        setUrlEditing(false);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Connection failed";
+      setError(msg);
+      useToastStore.getState().addToast(msg);
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  // Load saved config on mount — 저장된 URL 있으면 자동 연결
   useEffect(() => {
     getConfig()
       .then((cfg) => {
         if (cfg.saved_url && !sheetUrl) {
           setSheetUrl(cfg.saved_url);
+          // 저장된 URL로 즉시 자동 연결
+          autoConnect(cfg.saved_url);
         }
         if (cfg.saved_sheet) {
           setSelectedSheet(cfg.saved_sheet);
@@ -72,6 +103,7 @@ export default function DataSourceScreen() {
         if (!selectedSheet || !res.sheet_names.includes(selectedSheet)) {
           setSelectedSheet(res.sheet_names[0]);
         }
+        setUrlEditing(false);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Connection failed";
@@ -183,56 +215,93 @@ export default function DataSourceScreen() {
                 <label htmlFor="sheet-url" className="block text-sm font-semibold text-text-main">
                   Google Sheet URL
                 </label>
-                <div className={`group relative flex rounded-xl bg-white ring-1 ring-inset shadow-sm transition-all duration-200 ${
-                  urlError
-                    ? "ring-red-400 focus-within:ring-2 focus-within:ring-red-400"
-                    : "ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:ring-slate-300"
-                }`}>
-                  <div className="flex items-center pl-4 border-r border-slate-100 pr-3 bg-slate-50 rounded-l-xl">
-                    <img
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUTqR4611swIA4vQeI__WyiAAbdng68ytwlBVg0LUOxyEVpLnOeYFifEtfXArHcrWhXg51tjJLt4F3idymF3-vNCwgv0gu5cR_PdO0VtpNgxwdUTFVSfF_z16U33SHbM1xrP5Wd_RMPShKEUXu9jpybl21XKiHuCYosPvZz5-XnkBankOR0q9OW9UqM3nte6ncfz_LOndztvFBksYyw8jyWPxRdS60e4xi04GtCfu34hkVyKJ-Gsgb6iMmGaxaULvp1AfYnMwGFQ"
-                      alt="Sheets"
-                      className="h-6 w-6"
-                    />
+
+                {/* 표시 모드: 연결 완료 + 편집 아님 */}
+                {sheetNames.length > 0 && !urlEditing ? (
+                  <div className="group relative flex items-center rounded-xl bg-white ring-1 ring-inset ring-slate-200 shadow-sm transition-all duration-200 hover:ring-slate-300">
+                    <div className="flex items-center pl-4 border-r border-slate-100 pr-3 bg-slate-50 rounded-l-xl self-stretch">
+                      <img
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUTqR4611swIA4vQeI__WyiAAbdng68ytwlBVg0LUOxyEVpLnOeYFifEtfXArHcrWhXg51tjJLt4F3idymF3-vNCwgv0gu5cR_PdO0VtpNgxwdUTFVSfF_z16U33SHbM1xrP5Wd_RMPShKEUXu9jpybl21XKiHuCYosPvZz5-XnkBankOR0q9OW9UqM3nte6ncfz_LOndztvFBksYyw8jyWPxRdS60e4xi04GtCfu34hkVyKJ-Gsgb6iMmGaxaULvp1AfYnMwGFQ"
+                        alt="Sheets"
+                        className="h-6 w-6"
+                      />
+                    </div>
+                    <span className="flex-1 py-4 pl-4 pr-2 text-text-main text-sm truncate select-all">
+                      {sheetUrl}
+                    </span>
+                    <div className="flex items-center pr-2">
+                      <button
+                        type="button"
+                        onClick={() => setUrlEditing(true)}
+                        aria-label="시트 URL 변경"
+                        className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/5 transition-colors duration-200"
+                      >
+                        <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                          edit
+                        </span>
+                      </button>
+                    </div>
                   </div>
-                  <input
-                    id="sheet-url"
-                    type="text"
-                    value={sheetUrl}
-                    aria-describedby={urlError ? "sheet-url-error" : "sheet-url-hint"}
-                    onChange={(e) => {
-                      setSheetUrl(e.target.value);
-                      // 입력 중 에러 클리어 (유효해지면)
-                      if (urlError && SHEETS_URL_REGEX.test(e.target.value)) {
+                ) : (
+                  /* 편집 모드: 미연결 또는 편집 중 */
+                  <div className={`group relative flex items-center rounded-xl bg-white ring-1 ring-inset shadow-sm transition-all duration-200 ${
+                    urlError
+                      ? "ring-red-400 focus-within:ring-2 focus-within:ring-red-400"
+                      : "ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:ring-slate-300"
+                  }`}>
+                    <div className="flex items-center pl-4 border-r border-slate-100 pr-3 bg-slate-50 rounded-l-xl self-stretch">
+                      <img
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUTqR4611swIA4vQeI__WyiAAbdng68ytwlBVg0LUOxyEVpLnOeYFifEtfXArHcrWhXg51tjJLt4F3idymF3-vNCwgv0gu5cR_PdO0VtpNgxwdUTFVSfF_z16U33SHbM1xrP5Wd_RMPShKEUXu9jpybl21XKiHuCYosPvZz5-XnkBankOR0q9OW9UqM3nte6ncfz_LOndztvFBksYyw8jyWPxRdS60e4xi04GtCfu34hkVyKJ-Gsgb6iMmGaxaULvp1AfYnMwGFQ"
+                        alt="Sheets"
+                        className="h-6 w-6"
+                      />
+                    </div>
+                    <input
+                      id="sheet-url"
+                      type="text"
+                      value={sheetUrl}
+                      aria-describedby={urlError ? "sheet-url-error" : "sheet-url-hint"}
+                      onChange={(e) => {
+                        setSheetUrl(e.target.value);
+                        if (urlError && SHEETS_URL_REGEX.test(e.target.value)) {
+                          setUrlError(null);
+                        }
+                        // URL 변경 시 기존 연결 데이터 초기화
+                        if (sheetNames.length > 0) {
+                          setSheetNames([]);
+                          setSelectedSheet("");
+                          setProjectName("");
+                          setBotEmail("");
+                          setError("");
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!sheetUrl.trim()) return;
+                        if (!SHEETS_URL_REGEX.test(sheetUrl)) {
+                          setUrlError("올바른 Google Sheets URL을 입력해주세요");
+                          return;
+                        }
                         setUrlError(null);
-                      }
-                    }}
-                    onBlur={() => {
-                      if (!sheetUrl.trim()) return;
-                      if (!SHEETS_URL_REGEX.test(sheetUrl)) {
-                        setUrlError("올바른 Google Sheets URL을 입력해주세요");
-                        return;
-                      }
-                      setUrlError(null);
-                      if (sheetNames.length === 0) handleConnect();
-                    }}
-                    placeholder="https://docs.google.com/spreadsheets/d/..."
-                    className="block w-full border-0 bg-transparent py-4 pl-4 text-text-main placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 rounded-r-xl"
-                  />
-                  <div className="flex items-center pr-2">
-                    <button
-                      type="button"
-                      onClick={handleConnect}
-                      disabled={connecting}
-                      aria-label="시트 연결"
-                      className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/5 transition-colors duration-200"
-                    >
-                      <span className="material-symbols-outlined text-xl" aria-hidden="true">
-                        {connecting ? "sync" : "content_paste"}
-                      </span>
-                    </button>
+                        if (sheetNames.length === 0) handleConnect();
+                      }}
+                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      className="block w-full border-0 bg-transparent py-4 pl-4 text-text-main placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 rounded-r-xl"
+                    />
+                    <div className="flex items-center pr-2 self-stretch">
+                      <button
+                        type="button"
+                        onClick={handleConnect}
+                        disabled={connecting}
+                        aria-label="시트 연결"
+                        className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/5 transition-colors duration-200"
+                      >
+                        <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                          {connecting ? "sync" : "content_paste"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Inline URL Error */}
                 {urlError && (
@@ -262,7 +331,7 @@ export default function DataSourceScreen() {
                       {sheetNames.length > 1 ? "s" : ""} found
                     </span>
                   </div>
-                ) : (
+                ) : !connecting && sheetNames.length === 0 && !sheetUrl.trim() ? (
                   <div id="sheet-url-hint" className="flex items-start gap-2 text-xs text-text-muted bg-blue-50/50 p-2 rounded-lg border border-blue-100/50">
                     <span className="material-symbols-outlined text-sm text-primary mt-0.5" aria-hidden="true">
                       info
@@ -272,7 +341,7 @@ export default function DataSourceScreen() {
                       before proceeding.
                     </span>
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* Sheet Tab + Row Range */}
@@ -321,8 +390,9 @@ export default function DataSourceScreen() {
                   </div>
                 </div>
                 <div className={allSheetsMode ? "opacity-50 pointer-events-none" : ""}>
-                  <label htmlFor="row-start" className="mb-2 block text-sm font-semibold text-text-main">
-                    Row Range
+                  <label htmlFor="row-start" className="mb-2 block text-sm text-text-main">
+                    <span className="font-semibold">Row Range</span>{" "}
+                    <span className="text-text-muted font-normal">(비워 두면 마지막 행까지 자동 감지)</span>
                   </label>
                   <div className="flex items-center gap-3">
                     <div className="relative w-full">
@@ -370,13 +440,9 @@ export default function DataSourceScreen() {
                       />
                     </div>
                   </div>
-                  {rowRangeError ? (
+                  {rowRangeError && (
                     <p className="text-xs text-red-600 mt-1.5 animate-fade-slide-down">
                       {rowRangeError}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-text-muted mt-1.5">
-                      비워두면 마지막 행까지 자동 감지
                     </p>
                   )}
                 </div>
