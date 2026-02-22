@@ -692,11 +692,17 @@ export default function TranslationWorkspace() {
                 </div>
 
                 {/* Grid header */}
-                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-surface-pale border-b border-border-subtle text-xs font-bold text-text-muted uppercase tracking-wider sticky top-0 z-10">
+                <div className={`grid gap-4 px-6 py-3 bg-surface-pale border-b border-border-subtle text-xs font-bold text-text-muted uppercase tracking-wider sticky top-0 z-10 ${
+                  mode === "review" ? "grid-cols-12" : "grid-cols-12"
+                }`}>
                   <div className="col-span-1">AI Note</div>
-                  <div className="col-span-3">Source (KR)</div>
-                  <div className="col-span-3">Previous Translation</div>
-                  <div className="col-span-3">New Translation</div>
+                  <div className={mode === "review" ? "col-span-3" : "col-span-3"}>Source (KR)</div>
+                  {mode === "review" && (
+                    <div className="col-span-3">Previous Translation</div>
+                  )}
+                  <div className={mode === "review" ? "col-span-3" : "col-span-6"}>
+                    {mode === "review" ? "New Translation" : "Translation"}
+                  </div>
                   <div className="col-span-2 text-center">
                     {mode === "review" ? "Action" : "Status"}
                   </div>
@@ -761,37 +767,39 @@ export default function TranslationWorkspace() {
                         </div>
 
                         {/* Source KR */}
-                        <div className="col-span-3 text-text-main text-sm font-medium leading-relaxed">
+                        <div className={`${mode === "review" ? "col-span-3" : "col-span-3"} text-text-main text-sm font-medium leading-relaxed`}>
                           <span className="line-clamp-2">
                             {row.original_ko}
                           </span>
                         </div>
 
-                        {/* Previous Translation */}
-                        <div className="col-span-3">
-                          {row.old_translation ? (
-                            isUnchanged ? (
-                              <span className="text-text-muted text-sm leading-relaxed line-clamp-2">
-                                {row.old_translation}
+                        {/* Previous Translation (review mode only) */}
+                        {mode === "review" && (
+                          <div className="col-span-3">
+                            {row.old_translation ? (
+                              isUnchanged ? (
+                                <span className="text-text-muted text-sm leading-relaxed line-clamp-2">
+                                  {row.old_translation}
+                                </span>
+                              ) : (
+                                <span className="text-diff-removed-text bg-diff-removed-bg/40 px-1.5 py-0.5 rounded text-sm leading-relaxed line-through decoration-diff-removed-text/40 line-clamp-2">
+                                  {row.old_translation}
+                                </span>
+                              )
+                            ) : row.isDone ? (
+                              <span className="text-text-muted text-sm italic opacity-60">
+                                No previous translation
                               </span>
                             ) : (
-                              <span className="text-diff-removed-text bg-diff-removed-bg/40 px-1.5 py-0.5 rounded text-sm leading-relaxed line-through decoration-diff-removed-text/40 line-clamp-2">
-                                {row.old_translation}
-                              </span>
-                            )
-                          ) : row.isDone ? (
-                            <span className="text-text-muted text-sm italic opacity-60">
-                              No previous translation
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">&mdash;</span>
-                          )}
-                        </div>
+                              <span className="text-gray-300">&mdash;</span>
+                            )}
+                          </div>
+                        )}
 
-                        {/* New Translation */}
-                        <div className="col-span-3 text-sm leading-relaxed">
+                        {/* Translation / New Translation */}
+                        <div className={`${mode === "review" ? "col-span-3" : "col-span-6"} text-sm leading-relaxed`}>
                           {row.isDone ? (
-                            row.hasChange && row.old_translation ? (
+                            mode === "review" && row.hasChange && row.old_translation ? (
                               <span className="text-text-main line-clamp-2">
                                 {highlightDiff(
                                   row.old_translation,
@@ -803,10 +811,10 @@ export default function TranslationWorkspace() {
                                 className={
                                   row.hasChange
                                     ? "text-text-main"
-                                    : "text-text-muted"
+                                    : mode === "review" ? "text-text-muted" : "text-text-main"
                                 }
                               >
-                                <span className="line-clamp-2">
+                                <span className={mode === "review" ? "line-clamp-2" : "line-clamp-3"}>
                                   {row.translated}
                                 </span>
                               </span>
