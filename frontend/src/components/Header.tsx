@@ -13,18 +13,18 @@ export default function Header() {
   const status = statusConfig[sseStatus];
 
   return (
-    <header className="flex h-20 items-center justify-between border-b border-border-subtle bg-bg-surface px-8 shadow-sm shrink-0 z-30">
+    <header className="flex h-20 items-center justify-between border-b border-border-subtle/60 bg-white/80 backdrop-blur-md px-8 shadow-sm shrink-0 z-30">
       {/* Logo */}
       <div className="flex items-center gap-3 min-w-[240px]">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white shadow-md shadow-primary/20">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-md">
           <span className="material-symbols-outlined text-2xl">translate</span>
         </div>
         <div>
-          <h2 className="text-base font-bold text-text-main tracking-tight leading-none">
-            Game Localization
+          <h2 className="text-lg font-bold text-text-main tracking-tight leading-none">
+            Rabbit Loc
           </h2>
-          <span className="text-xs text-text-muted font-medium">
-            Automated Workflow
+          <span className="text-[10px] uppercase tracking-wider font-semibold text-text-muted">
+            Localization Tool
           </span>
         </div>
       </div>

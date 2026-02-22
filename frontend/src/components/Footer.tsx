@@ -36,8 +36,8 @@ export default function Footer({
   const isIdle = currentStep === "idle";
 
   return (
-    <div className="h-20 border-t border-border-subtle bg-bg-surface px-8 shadow-[0_-4px_20px_-2px_rgba(0,0,0,0.05)] z-20 flex items-center justify-center shrink-0">
-      <div className="w-full flex max-w-6xl items-center justify-between">
+    <div className="h-24 border-t border-slate-100 bg-white/90 backdrop-blur-md px-8 shadow-[0_-4px_30px_-4px_rgba(0,0,0,0.03)] z-20 flex items-center justify-center shrink-0">
+      <div className="w-full flex max-w-5xl items-center justify-between">
         {/* Left: Back or Cancel */}
         {showCancel ? (
           <button
@@ -50,9 +50,9 @@ export default function Footer({
           <button
             onClick={onBack}
             disabled={isIdle}
-            className={`rounded-lg px-6 py-2.5 text-sm font-medium transition-colors h-11 flex items-center gap-2 ${
+            className={`rounded-xl px-6 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${
               isIdle
-                ? "text-slate-300 cursor-not-allowed"
+                ? "text-slate-300 cursor-not-allowed select-none"
                 : "text-text-muted hover:bg-slate-50 hover:text-text-main"
             }`}
           >
@@ -67,7 +67,7 @@ export default function Footer({
         {showDiscard && (
           <button
             onClick={onDiscard}
-            className="flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors h-11"
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
             title="Discard all changes"
           >
             <span className="material-symbols-outlined text-lg">delete</span>
@@ -76,52 +76,55 @@ export default function Footer({
         )}
 
         {/* Right: Controls */}
-        <div className="flex items-center gap-4">
-          {/* Scope radio (disabled after idle) */}
+        <div className="flex items-center gap-6">
+          {/* Scope pill toggle */}
           <div
-            className={`flex items-center gap-3 px-4 py-1.5 bg-slate-50 rounded-lg border border-border-subtle ${
-              !isIdle ? "opacity-70" : ""
+            className={`flex items-center bg-slate-100/80 rounded-xl p-1.5 border border-slate-200 shadow-inner ${
+              !isIdle ? "opacity-70 pointer-events-none" : ""
             }`}
           >
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide mr-1">
-              Scope:
-            </span>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="relative flex cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-text-main transition-all has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm">
               <input
                 type="radio"
                 name="translation_scope"
                 checked={mode === "A"}
                 disabled={!isIdle}
                 onChange={() => setMode("A")}
-                className="w-4 h-4 text-primary border-slate-300 focus:ring-primary"
+                className="sr-only"
               />
-              <span className="text-sm font-medium text-text-muted">
-                전체 번역
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">
+                  playlist_add_check
+                </span>
+                All
               </span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="relative flex cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-text-main transition-all has-[:checked]:bg-white has-[:checked]:text-primary has-[:checked]:shadow-sm">
               <input
                 type="radio"
                 name="translation_scope"
                 checked={mode === "B"}
                 disabled={!isIdle}
                 onChange={() => setMode("B")}
-                className="w-4 h-4 text-primary border-slate-300 focus:ring-primary"
+                className="sr-only"
               />
-              <span className="text-sm font-medium text-text-muted">
-                신규 번역
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">
+                  new_releases
+                </span>
+                New
               </span>
             </label>
           </div>
 
-          <div className="h-8 w-px bg-border-subtle" />
+          <div className="h-8 w-px bg-slate-200" />
 
           {/* Folder button */}
           <button
-            className="flex items-center justify-center rounded-lg border border-border-subtle bg-white p-2.5 text-text-muted hover:bg-slate-50 hover:border-slate-300 hover:text-text-main transition-all shadow-sm h-11 w-11"
-            title="Open Folder"
+            className="flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all shadow-sm h-12 w-12 group"
+            title="Select Folder"
           >
-            <span className="material-symbols-outlined text-xl">
+            <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">
               folder_open
             </span>
           </button>
@@ -130,7 +133,7 @@ export default function Footer({
           {showExport && (
             <button
               onClick={onExport}
-              className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-sm text-sm"
+              className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm"
             >
               Export JSON
             </button>
@@ -140,14 +143,14 @@ export default function Footer({
           <button
             onClick={onAction}
             disabled={actionDisabled}
-            className={`group flex items-center gap-2 rounded-lg px-8 py-2.5 text-sm font-bold text-white transition-all h-11 disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`group flex items-center gap-3 rounded-xl px-8 py-3 text-base font-bold text-white transition-all active:scale-[0.98] ring-offset-2 focus:ring-2 ring-primary disabled:opacity-50 disabled:cursor-not-allowed ${
               actionCompleted
                 ? "bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
-                : "bg-primary hover:bg-primary-dark shadow-lg shadow-primary/30"
+                : "bg-gradient-to-r from-primary to-primary-dark hover:shadow-lg hover:shadow-primary/30"
             }`}
           >
             {actionLabel}
-            <span className="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">
+            <span className="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1">
               {actionIcon}
             </span>
           </button>

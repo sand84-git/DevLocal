@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { connectSheet, startPipeline, getConfig } from "../api/client";
 import Footer from "../components/Footer";
-import { useEffect } from "react";
 
 export default function DataSourceScreen() {
   const sheetUrl = useAppStore((s) => s.sheetUrl);
@@ -22,6 +21,11 @@ export default function DataSourceScreen() {
   const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const helpRef = useRef<HTMLDivElement>(null);
+
+  const botEmail = useAppStore((s) => s.botEmail);
 
   // Load saved config on mount
   useEffect(() => {
@@ -30,9 +34,24 @@ export default function DataSourceScreen() {
         if (cfg.saved_url && !sheetUrl) {
           setSheetUrl(cfg.saved_url);
         }
+        if (cfg.bot_email) {
+          setBotEmail(cfg.bot_email);
+        }
       })
       .catch(() => {});
   }, []);
+
+  // Close help popover on outside click
+  useEffect(() => {
+    if (!showHelp) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (helpRef.current && !helpRef.current.contains(e.target as Node)) {
+        setShowHelp(false);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [showHelp]);
 
   async function handleConnect() {
     if (!sheetUrl.trim()) return;
@@ -78,40 +97,86 @@ export default function DataSourceScreen() {
 
   return (
     <>
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 flex flex-col items-center justify-center">
-        <div className="w-full max-w-3xl space-y-6">
-          <section className="rounded-xl border border-border-subtle bg-bg-surface p-8 shadow-soft animate-fade-slide-up">
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-text-main">
-                Data Source Configuration
-              </h3>
-              <p className="text-text-muted text-sm mt-1">
-                Connect your Google Sheet to start the localization process.
-              </p>
-            </div>
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 flex flex-col items-center justify-center relative bg-gradient-mesh">
+        {/* Decorative background blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-100 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob" />
+          <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-sky-100 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob animation-delay-2000" />
+        </div>
 
+        <div className="w-full max-w-2xl space-y-8">
+          {/* Title section — above card */}
+          <div className="text-center space-y-3 mb-8">
+            <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
+              Data Source Configuration
+            </h3>
+            <p className="text-text-muted text-base max-w-lg mx-auto leading-relaxed">
+              Connect your master Google Sheet to seamlessly sync and automate
+              your localization workflow.
+            </p>
+          </div>
+
+          {/* Main card — glassmorphism */}
+          <section className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-xl p-8 md:p-10 shadow-soft ring-1 ring-slate-900/5 animate-fade-slide-up">
             <div className="grid grid-cols-1 gap-8">
               {/* Google Sheet URL */}
               <div className="space-y-4">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <label className="block text-sm font-semibold text-text-main">
                     Google Sheet URL
                   </label>
-                  <a
-                    href="#"
-                    className="text-sm text-primary hover:text-primary-dark hover:underline flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      help
-                    </span>
-                    Help
-                  </a>
+                  <div className="relative" ref={helpRef}>
+                    <button
+                      onClick={() => setShowHelp(!showHelp)}
+                      className={`text-xs font-medium transition-colors flex items-center gap-1 group ${
+                        showHelp
+                          ? "text-primary-dark"
+                          : "text-primary hover:text-primary-dark"
+                      }`}
+                    >
+                      Need help?{" "}
+                      <span className="material-symbols-outlined text-sm group-hover:translate-x-0.5 transition-transform">
+                        arrow_forward
+                      </span>
+                    </button>
+                    {showHelp && (
+                      <div className="absolute right-0 top-full mt-2 z-20 w-80 p-4 rounded-lg bg-white border border-border-subtle shadow-lg text-left animate-fade-slide-down">
+                        <p className="text-xs font-semibold text-text-main mb-2">
+                          Share your sheet with this email:
+                        </p>
+                        <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-2.5 ring-1 ring-inset ring-slate-200">
+                          <span className="text-xs text-text-main font-mono break-all flex-1">
+                            {botEmail || "Loading..."}
+                          </span>
+                          <button
+                            onClick={async () => {
+                              if (!botEmail) return;
+                              await navigator.clipboard.writeText(botEmail);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 1500);
+                            }}
+                            className="shrink-0 p-1.5 rounded-md text-text-muted hover:text-primary hover:bg-primary/5 transition-colors"
+                            title="Copy"
+                          >
+                            <span className="material-symbols-outlined text-base">
+                              {copied ? "check" : "content_copy"}
+                            </span>
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
+                          Add as <strong>Editor</strong> in Google Sheets sharing settings.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex rounded-lg bg-white ring-1 ring-inset ring-border-subtle focus-within:ring-2 focus-within:ring-primary shadow-sm transition-all hover:ring-slate-300">
-                  <div className="flex items-center pl-3">
-                    <span className="material-symbols-outlined text-text-muted text-xl">
-                      table_chart
-                    </span>
+                <div className="group relative flex rounded-xl bg-white ring-1 ring-inset ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 shadow-sm transition-all hover:ring-slate-300">
+                  <div className="flex items-center pl-4 border-r border-slate-100 pr-3 bg-slate-50 rounded-l-xl">
+                    <img
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUTqR4611swIA4vQeI__WyiAAbdng68ytwlBVg0LUOxyEVpLnOeYFifEtfXArHcrWhXg51tjJLt4F3idymF3-vNCwgv0gu5cR_PdO0VtpNgxwdUTFVSfF_z16U33SHbM1xrP5Wd_RMPShKEUXu9jpybl21XKiHuCYosPvZz5-XnkBankOR0q9OW9UqM3nte6ncfz_LOndztvFBksYyw8jyWPxRdS60e4xi04GtCfu34hkVyKJ-Gsgb6iMmGaxaULvp1AfYnMwGFQ"
+                      alt="Sheets"
+                      className="h-6 w-6"
+                    />
                   </div>
                   <input
                     type="text"
@@ -122,13 +187,13 @@ export default function DataSourceScreen() {
                         handleConnect();
                     }}
                     placeholder="https://docs.google.com/spreadsheets/d/..."
-                    className="block w-full border-0 bg-transparent py-3 pl-3 text-text-main placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6"
+                    className="block w-full border-0 bg-transparent py-4 pl-4 text-text-main placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 rounded-r-xl"
                   />
                   <div className="flex items-center pr-2">
                     <button
                       onClick={handleConnect}
                       disabled={connecting}
-                      className="p-1.5 text-text-muted hover:text-primary rounded-md hover:bg-slate-50 transition-colors"
+                      className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/5 transition-colors"
                     >
                       <span className="material-symbols-outlined text-xl">
                         {connecting ? "sync" : "content_paste"}
@@ -136,34 +201,38 @@ export default function DataSourceScreen() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs mt-2">
-                  {connecting ? (
-                    <>
-                      <span className="material-symbols-outlined text-sm text-primary animate-spin360">
-                        progress_activity
-                      </span>
-                      <span className="text-primary font-medium">Connecting...</span>
-                    </>
-                  ) : sheetNames.length > 0 ? (
-                    <>
-                      <span className="material-symbols-outlined text-sm text-emerald-500">
-                        check_circle
-                      </span>
-                      <span className="text-emerald-600 font-medium">
-                        Connected — {sheetNames.length} tab{sheetNames.length > 1 ? "s" : ""} found
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-sm text-text-muted">
-                        info
-                      </span>
-                      <span className="text-text-muted">
-                        Make sure the sheet is shared with the service account.
-                      </span>
-                    </>
-                  )}
-                </div>
+
+                {/* Status / Info */}
+                {connecting ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="material-symbols-outlined text-sm text-primary animate-spin360">
+                      progress_activity
+                    </span>
+                    <span className="text-primary font-medium">
+                      Connecting...
+                    </span>
+                  </div>
+                ) : sheetNames.length > 0 ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="material-symbols-outlined text-sm text-emerald-500">
+                      check_circle
+                    </span>
+                    <span className="text-emerald-600 font-medium">
+                      Connected — {sheetNames.length} tab
+                      {sheetNames.length > 1 ? "s" : ""} found
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 text-xs text-text-muted bg-blue-50/50 p-2 rounded-lg border border-blue-100/50">
+                    <span className="material-symbols-outlined text-sm text-primary mt-0.5">
+                      info
+                    </span>
+                    <span>
+                      Ensure the sheet is shared with the service account email
+                      before proceeding.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Sheet Tab + Row Range */}
@@ -177,7 +246,7 @@ export default function DataSourceScreen() {
                       value={selectedSheet}
                       onChange={(e) => setSelectedSheet(e.target.value)}
                       disabled={sheetNames.length === 0}
-                      className="block w-full rounded-lg border-0 bg-white py-3 pl-3 pr-10 text-text-main ring-1 ring-inset ring-border-subtle focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm appearance-none transition-all hover:ring-slate-300"
+                      className="block w-full rounded-xl border-0 bg-white py-3.5 pl-4 pr-10 text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm appearance-none transition-all hover:ring-slate-300"
                     >
                       {sheetNames.length === 0 ? (
                         <option value="">Select a tab...</option>
@@ -189,7 +258,7 @@ export default function DataSourceScreen() {
                         ))
                       )}
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-text-muted">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-text-muted">
                       <span className="material-symbols-outlined">
                         expand_more
                       </span>
@@ -201,25 +270,37 @@ export default function DataSourceScreen() {
                     Row Range
                   </label>
                   <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      value={rowStart || ""}
-                      onChange={(e) => setRowStart(Number(e.target.value))}
-                      placeholder="Start"
-                      className="block w-full rounded-lg border-0 bg-white py-3 px-3 text-center text-text-main ring-1 ring-inset ring-border-subtle focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
-                    />
-                    <span className="text-text-muted font-medium">-</span>
-                    <input
-                      type="number"
-                      value={rowEnd || ""}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        setRowEnd(v);
-                        setRowLimit(v > 0 ? v - rowStart : 0);
-                      }}
-                      placeholder="End"
-                      className="block w-full rounded-lg border-0 bg-white py-3 px-3 text-center text-text-main ring-1 ring-inset ring-border-subtle focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
-                    />
+                    <div className="relative w-full">
+                      <input
+                        type="number"
+                        value={rowStart || ""}
+                        onChange={(e) => setRowStart(Number(e.target.value))}
+                        placeholder="1"
+                        className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
+                      />
+                    </div>
+                    <span className="text-slate-300 font-medium text-lg">
+                      -
+                    </span>
+                    <div className="relative w-full">
+                      <div className="group relative">
+                        <input
+                          type="number"
+                          value={rowEnd || ""}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            setRowEnd(v);
+                            setRowLimit(v > 0 ? v - rowStart : 0);
+                          }}
+                          placeholder="&#8734;"
+                          className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
+                        />
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                          Empty = Auto-detect
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -235,20 +316,6 @@ export default function DataSourceScreen() {
               </div>
             )}
           </section>
-
-          {/* Tip */}
-          <div className="bg-primary-light border border-primary/20 rounded-lg p-4 flex gap-3 text-sm text-primary-dark animate-fade-slide-up" style={{ animationDelay: '80ms' }}>
-            <span className="material-symbols-outlined text-primary shrink-0">
-              tips_and_updates
-            </span>
-            <div>
-              <p className="font-semibold mb-1">Tip</p>
-              <p className="opacity-90">
-                Leaving the end row empty will automatically detect the last row
-                containing data.
-              </p>
-            </div>
-          </div>
         </div>
       </main>
 

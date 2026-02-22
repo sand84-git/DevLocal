@@ -620,8 +620,10 @@ def api_download(session_id: str, file_type: str):
 
 @router.get("/config")
 def api_get_config():
-    """저장된 설정 조회"""
-    return _load_config()
+    """저장된 설정 조회 (bot_email 포함)"""
+    cfg = _load_config()
+    cfg["bot_email"] = get_bot_email()
+    return cfg
 
 
 @router.put("/config")

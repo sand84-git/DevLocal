@@ -4,7 +4,7 @@ const STEPS = [
   { label: "1. Load", icon: "edit_document" },
   { label: "2. KR Review", icon: "chat_bubble" },
   { label: "3. Translating", icon: "g_translate" },
-  { label: "4. Multi-Review", icon: "rate_review" },
+  { label: "4. Multi-Review", icon: "checklist" },
   { label: "5. Complete", icon: "check_circle" },
 ] as const;
 
@@ -66,13 +66,13 @@ export default function StepIndicator({
                     </span>
                   </span>
                 ) : isCurrent ? (
-                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border-2 border-primary text-primary z-10 mx-auto shadow-sm shadow-primary/20">
-                    <span className={`material-symbols-outlined text-lg ${isProcessing ? "animate-spin-360" : ""}`}>
+                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white z-10 mx-auto ring-4 ring-primary-light shadow-sm">
+                    <span className={`material-symbols-outlined text-lg ${isProcessing ? "animate-spin360" : ""}`}>
                       {step.icon}
                     </span>
                   </span>
                 ) : (
-                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-300 text-slate-400 z-10 mx-auto">
+                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-300 z-10 mx-auto">
                     <span className="material-symbols-outlined text-lg">
                       {step.icon}
                     </span>
@@ -96,7 +96,7 @@ export default function StepIndicator({
                     ? "font-semibold text-primary"
                     : isCurrent
                       ? "font-bold text-primary"
-                      : "font-medium text-text-muted"
+                      : "font-medium text-slate-400"
                 }`}
               >
                 {step.label}
