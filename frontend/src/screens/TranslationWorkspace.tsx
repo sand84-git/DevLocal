@@ -35,6 +35,7 @@ export default function TranslationWorkspace() {
   const costSummary = useAppStore((s) => s.costSummary);
   const setTranslationsApplied = useAppStore((s) => s.setTranslationsApplied);
   const setCellsUpdated = useAppStore((s) => s.setCellsUpdated);
+  const resetTranslationState = useAppStore((s) => s.resetTranslationState);
   const reset = useAppStore((s) => s.reset);
 
   /* ── Local State ── */
@@ -202,6 +203,7 @@ export default function TranslationWorkspace() {
     setCancelError(null);
     try {
       await cancelTranslation(sessionId);
+      resetTranslationState();
       setCurrentStep("ko_review");
     } catch (e) {
       setCancelError(

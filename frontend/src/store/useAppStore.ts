@@ -87,6 +87,7 @@ interface AppState {
   setProgress: (percent: number, label: string) => void;
   setSseStatus: (status: "connected" | "reconnecting" | "disconnected") => void;
   setTranslationsApplied: (applied: boolean) => void;
+  resetTranslationState: () => void;
   reset: () => void;
 }
 
@@ -178,6 +179,22 @@ export const useAppStore = create<AppState>((set) => ({
     set({ progressPercent: percent, progressLabel: label }),
   setSseStatus: (status) => set({ sseStatus: status }),
   setTranslationsApplied: (applied) => set({ translationsApplied: applied }),
+  resetTranslationState: () =>
+    set({
+      reviewResults: [],
+      reviewDecisions: {},
+      failedRows: [],
+      partialTranslations: [],
+      partialReviews: [],
+      chunkProgress: null,
+      costSummary: null,
+      cellsUpdated: 0,
+      progressPercent: 0,
+      progressLabel: "",
+      translationsApplied: false,
+      selectedLang: "en",
+      reviewPage: 1,
+    }),
   reset: () => {
     localStorage.removeItem("devlocal_session_id");
     set(initialState);
