@@ -333,7 +333,7 @@ export default function TranslationWorkspace() {
                     href={getDownloadUrl(sessionId, "translation_report")}
                     className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle bg-white hover:bg-surface-pale text-text-muted hover:text-primary transition-colors duration-200 font-semibold text-sm shadow-sm h-10"
                   >
-                    <span className="material-symbols-outlined text-xl">
+                    <span className="material-symbols-outlined text-xl" aria-hidden="true">
                       download
                     </span>
                     Download CSV Backup
@@ -346,7 +346,7 @@ export default function TranslationWorkspace() {
           {/* ═══ Progress Card (ALWAYS visible — never fades out) ═══ */}
           <section className="rounded-xl border border-border-subtle bg-bg-surface p-6 shadow-soft animate-fade-slide-up">
             <div className="flex items-center justify-between mb-3">
-              <span className={`text-sm font-medium text-text-muted ${!cardComplete ? "animate-breathe" : ""}`}>
+              <span className={`text-sm font-medium text-text-muted ${!cardComplete ? "animate-breathe" : ""}`} aria-live="polite">
                 {cardLabel}
               </span>
               <span
@@ -355,7 +355,7 @@ export default function TranslationWorkspace() {
                 {animPct}%
               </span>
             </div>
-            <div className="relative w-full overflow-hidden rounded-full bg-slate-100 h-3.5">
+            <div className="relative w-full overflow-hidden rounded-full bg-slate-100 h-3.5" role="progressbar" aria-valuenow={cardPercent} aria-valuemin={0} aria-valuemax={100} aria-label="번역 진행률">
               <div
                 className={`absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out ${barColor} ${barShadow}`}
                 style={{ width: `${cardPercent}%` }}
@@ -381,6 +381,13 @@ export default function TranslationWorkspace() {
               )}
             </div>
 
+            {/* ETA hint (translating mode only) */}
+            {mode === "translating" && !cardComplete && (
+              <p className="mt-2 text-xs text-text-muted text-center">
+                약 2~3분 소요될 수 있습니다
+              </p>
+            )}
+
             {/* Grid-collapse: summary stats (review mode only) */}
             <div
               className="grid transition-[grid-template-rows] duration-500 ease-out"
@@ -400,7 +407,7 @@ export default function TranslationWorkspace() {
                         className="rounded-xl border border-border-subtle bg-bg-surface p-4 shadow-soft"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <span className={`material-symbols-outlined text-lg ${stat.iconColor}`}>
+                          <span className={`material-symbols-outlined text-lg ${stat.iconColor}`} aria-hidden="true">
                             {stat.icon}
                           </span>
                           <span className="text-xs font-medium text-text-muted">
@@ -440,6 +447,7 @@ export default function TranslationWorkspace() {
                           ? "text-emerald-500"
                           : "text-text-muted"
                     }`}
+                    aria-hidden="true"
                   >
                     {agentPhase === "translator"
                       ? "progress_activity"
@@ -468,6 +476,7 @@ export default function TranslationWorkspace() {
                       ? "text-emerald-400"
                       : "text-slate-300"
                   }`}
+                  aria-hidden="true"
                 >
                   arrow_forward
                 </span>
@@ -490,6 +499,7 @@ export default function TranslationWorkspace() {
                           ? "text-emerald-500"
                           : "text-text-muted"
                     }`}
+                    aria-hidden="true"
                   >
                     {agentPhase === "reviewer"
                       ? "progress_activity"
@@ -516,6 +526,7 @@ export default function TranslationWorkspace() {
                       ? "text-emerald-400"
                       : "text-slate-300"
                   }`}
+                  aria-hidden="true"
                 >
                   arrow_forward
                 </span>
@@ -534,6 +545,7 @@ export default function TranslationWorkspace() {
                         ? "text-emerald-500"
                         : "text-text-muted"
                     }`}
+                    aria-hidden="true"
                   >
                     {agentPhase === "complete" ? "check_circle" : "circle"}
                   </span>
@@ -554,18 +566,20 @@ export default function TranslationWorkspace() {
           {/* ═══ Error Banner ═══ */}
           {error && (
             <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 animate-fade-slide-down">
-              <span className="material-symbols-outlined text-lg animate-shake">
+              <span className="material-symbols-outlined text-lg animate-shake" aria-hidden="true">
                 error
               </span>
               {error}
               <button
+                type="button"
                 onClick={() => {
                   setCancelError(null);
                   setSubmitError(null);
                 }}
                 className="ml-auto text-red-400 hover:text-red-600"
+                aria-label="오류 닫기"
               >
-                <span className="material-symbols-outlined text-lg">
+                <span className="material-symbols-outlined text-lg" aria-hidden="true">
                   close
                 </span>
               </button>
@@ -575,7 +589,7 @@ export default function TranslationWorkspace() {
           {/* ═══ Data Table ═══ */}
           {mode === "translating" && originalRows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <span className="material-symbols-outlined text-5xl text-primary animate-spin360">
+              <span className="material-symbols-outlined text-5xl text-primary animate-spin360" aria-hidden="true">
                 progress_activity
               </span>
               <p className="text-sm text-text-muted animate-breathe">
@@ -590,12 +604,15 @@ export default function TranslationWorkspace() {
                   <div className="flex items-center gap-4">
                     {/* Language tabs */}
                     {availableLangs.length > 0 && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" role="tablist" aria-label="언어 선택">
                         <span className="text-xs font-medium text-text-muted mr-2">
                           Language:
                         </span>
                         {availableLangs.map((lang) => (
                           <button
+                            type="button"
+                            role="tab"
+                            aria-selected={lang === activeLang}
                             key={lang}
                             onClick={() => {
                               setSelectedLang(lang);
@@ -635,11 +652,13 @@ export default function TranslationWorkspace() {
                     {/* Pagination */}
                     <div className="flex items-center bg-white rounded-lg border border-border-subtle p-0.5 shadow-sm">
                       <button
+                        type="button"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1}
                         className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors duration-200 active:scale-[0.95] disabled:opacity-30"
+                        aria-label="이전 페이지"
                       >
-                        <span className="material-symbols-outlined text-xl">
+                        <span className="material-symbols-outlined text-xl" aria-hidden="true">
                           chevron_left
                         </span>
                       </button>
@@ -647,13 +666,15 @@ export default function TranslationWorkspace() {
                         {page} / {totalPages}
                       </span>
                       <button
+                        type="button"
                         onClick={() =>
                           setPage((p) => Math.min(totalPages, p + 1))
                         }
                         disabled={page >= totalPages}
                         className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors duration-200 active:scale-[0.95] disabled:opacity-30"
+                        aria-label="다음 페이지"
                       >
-                        <span className="material-symbols-outlined text-xl">
+                        <span className="material-symbols-outlined text-xl" aria-hidden="true">
                           chevron_right
                         </span>
                       </button>
@@ -662,10 +683,11 @@ export default function TranslationWorkspace() {
                     {/* Approve All (review mode) */}
                     {mode === "review" && (
                       <button
+                        type="button"
                         onClick={handleApproveAllPage}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-light/50 border border-primary/20 text-primary-dark text-xs font-bold hover:bg-primary-light transition-colors duration-200 shadow-sm uppercase tracking-wide"
                       >
-                        <span className="material-symbols-outlined text-base">
+                        <span className="material-symbols-outlined text-base" aria-hidden="true">
                           done_all
                         </span>
                         Approve Page
@@ -681,7 +703,7 @@ export default function TranslationWorkspace() {
                 >
                   <div className="overflow-hidden">
                     <div className="flex items-center gap-3 px-5 py-3 bg-emerald-50 border-b border-emerald-200 animate-fade-slide-down">
-                      <span className="material-symbols-outlined text-emerald-600 animate-bounce-in">
+                      <span className="material-symbols-outlined text-emerald-600 animate-bounce-in" aria-hidden="true">
                         check_circle
                       </span>
                       <span className="text-sm font-semibold text-emerald-700">
@@ -735,6 +757,7 @@ export default function TranslationWorkspace() {
                           {row.reason ? (
                             <>
                               <button
+                                type="button"
                                 onClick={() =>
                                   setExpandedNote(
                                     expandedNote === rowKey ? null : rowKey,
@@ -746,7 +769,7 @@ export default function TranslationWorkspace() {
                                     : "text-text-muted hover:text-primary hover:bg-primary-light/50"
                                 }`}
                               >
-                                <span className="material-symbols-outlined text-lg">
+                                <span className="material-symbols-outlined text-lg" aria-hidden="true">
                                   sticky_note_2
                                 </span>
                                 {mode === "review" && (
@@ -830,6 +853,7 @@ export default function TranslationWorkspace() {
                             row.hasChange ? (
                               <div className="flex gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
                                 <button
+                                  type="button"
                                   onClick={() =>
                                     setReviewDecision(rowKey, "accepted")
                                   }
@@ -838,12 +862,14 @@ export default function TranslationWorkspace() {
                                       ? "bg-primary text-white"
                                       : "bg-surface-pale text-text-muted hover:text-white hover:bg-primary"
                                   }`}
+                                  aria-label="번역 수락"
                                 >
-                                  <span className="material-symbols-outlined text-xl">
+                                  <span className="material-symbols-outlined text-xl" aria-hidden="true">
                                     check
                                   </span>
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() =>
                                     setReviewDecision(rowKey, "rejected")
                                   }
@@ -852,15 +878,16 @@ export default function TranslationWorkspace() {
                                       ? "bg-red-500 text-white"
                                       : "bg-surface-pale text-text-muted hover:text-white hover:bg-red-500"
                                   }`}
+                                  aria-label="번역 거부"
                                 >
-                                  <span className="material-symbols-outlined text-xl">
+                                  <span className="material-symbols-outlined text-xl" aria-hidden="true">
                                     close
                                   </span>
                                 </button>
                               </div>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
-                                <span className="material-symbols-outlined text-sm">
+                                <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                   check
                                 </span>
                                 OK
@@ -868,35 +895,35 @@ export default function TranslationWorkspace() {
                             )
                           ) : row.rowStatus === "pending" ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-400 animate-breathe">
-                              <span className="material-symbols-outlined text-sm">
+                              <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                 hourglass_empty
                               </span>
                               Pending
                             </span>
                           ) : row.rowStatus === "translating" ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light/50 px-2.5 py-0.5 text-xs font-medium text-primary animate-breathe">
-                              <span className="material-symbols-outlined text-sm animate-spin360">
+                              <span className="material-symbols-outlined text-sm animate-spin360" aria-hidden="true">
                                 progress_activity
                               </span>
                               Translating
                             </span>
                           ) : row.rowStatus === "translated" ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light px-2.5 py-0.5 text-xs font-medium text-primary-dark animate-badge-enter">
-                              <span className="material-symbols-outlined text-sm">
+                              <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                 check
                               </span>
                               Translated
                             </span>
                           ) : row.rowStatus === "reviewing" ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 animate-breathe">
-                              <span className="material-symbols-outlined text-sm animate-spin360">
+                              <span className="material-symbols-outlined text-sm animate-spin360" aria-hidden="true">
                                 progress_activity
                               </span>
                               Reviewing
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 animate-badge-enter">
-                              <span className="material-symbols-outlined text-sm">
+                              <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                 check
                               </span>
                               Reviewed

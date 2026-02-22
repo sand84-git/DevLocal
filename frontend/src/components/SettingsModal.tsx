@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { getConfig, saveConfig } from "../api/client";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 type Tab = "prompting" | "glossary";
 type GlossaryLang = "ja" | "en";
@@ -31,6 +32,9 @@ export default function SettingsModal() {
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(panelRef, open);
 
   // Load config when modal opens
   useEffect(() => {
@@ -119,29 +123,36 @@ export default function SettingsModal() {
         if (e.target === backdropRef.current) setOpen(false);
       }}
     >
-      <div className="w-full max-w-2xl mx-4 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] animate-fade-slide-up">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-modal-title"
+        className="w-full max-w-2xl mx-4 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] animate-fade-slide-up"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-8 pt-7 pb-2">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-2xl">
+            <span className="material-symbols-outlined text-primary text-2xl" aria-hidden="true">
               tune
             </span>
-            <h2 className="text-xl font-bold text-text-main">
+            <h2 id="settings-modal-title" className="text-xl font-bold text-text-main">
               Custom Instructions & Glossary
             </h2>
           </div>
           <button
+            type="button"
             onClick={() => setOpen(false)}
             className="p-2 text-text-muted hover:text-text-main hover:bg-slate-100 rounded-lg transition-colors"
           >
-            <span className="material-symbols-outlined text-xl">close</span>
+            <span className="material-symbols-outlined text-xl" aria-hidden="true">close</span>
           </button>
         </div>
 
         {/* No sheet selected — gate */}
         {!selectedSheet ? (
           <div className="flex-1 flex flex-col items-center justify-center px-8 py-16 text-center">
-            <span className="material-symbols-outlined text-5xl text-slate-300 mb-4">
+            <span className="material-symbols-outlined text-5xl text-slate-300 mb-4" aria-hidden="true">
               table_chart
             </span>
             <p className="text-base font-semibold text-text-main mb-1">
@@ -156,8 +167,11 @@ export default function SettingsModal() {
         <>
         {/* Tabs */}
         <div className="px-8 pt-4 pb-2">
-          <div className="flex bg-slate-100/80 rounded-xl p-1.5 border border-slate-200">
+          <div className="flex bg-slate-100/80 rounded-xl p-1.5 border border-slate-200" role="tablist">
             <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "prompting"}
               onClick={() => setTab("prompting")}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
                 tab === "prompting"
@@ -168,6 +182,9 @@ export default function SettingsModal() {
               AI Prompting
             </button>
             <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "glossary"}
               onClick={() => setTab("glossary")}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
                 tab === "glossary"
@@ -181,7 +198,7 @@ export default function SettingsModal() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-8 py-5">
+        <div className="flex-1 overflow-y-auto px-8 py-5" role="tabpanel">
           {tab === "prompting" && (
             <div className="space-y-5">
               {/* Game Synopsis */}
@@ -240,7 +257,7 @@ export default function SettingsModal() {
                 className="w-full h-28 rounded-xl border border-slate-200 bg-white p-4 text-sm text-text-main placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all"
               />
               <div className="flex items-start gap-2 text-xs text-text-muted bg-blue-50/50 p-3 rounded-lg border border-blue-100/50">
-                <span className="material-symbols-outlined text-sm text-primary mt-0.5">
+                <span className="material-symbols-outlined text-sm text-primary mt-0.5" aria-hidden="true">
                   info
                 </span>
                 <span>
@@ -267,6 +284,7 @@ export default function SettingsModal() {
               <div className="flex gap-2">
                 {(Object.keys(LANG_LABELS) as GlossaryLang[]).map((lang) => (
                   <button
+                    type="button"
                     key={lang}
                     onClick={() => setGlossaryLang(lang)}
                     className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ${
@@ -291,11 +309,11 @@ export default function SettingsModal() {
                     value={newSource}
                     onChange={(e) => setNewSource(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddEntry()}
-                    placeholder="e.g., 전설"
+                    placeholder="e.g., ..."
                     className="w-full rounded-lg border border-slate-200 bg-white py-2.5 px-3 text-sm text-text-main placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
-                <span className="text-slate-300 font-medium pb-2.5">→</span>
+                <span className="text-slate-300 font-medium pb-2.5">{"\u2192"}</span>
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-text-muted mb-1.5">
                     Target ({glossaryLang.toUpperCase()})
@@ -306,17 +324,18 @@ export default function SettingsModal() {
                     onChange={(e) => setNewTarget(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddEntry()}
                     placeholder={
-                      glossaryLang === "ja" ? "e.g., 伝説" : "e.g., Legend"
+                      glossaryLang === "ja" ? "e.g., \u4F1D\u8AAC" : "e.g., Legend"
                     }
                     className="w-full rounded-lg border border-slate-200 bg-white py-2.5 px-3 text-sm text-text-main placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <button
+                  type="button"
                   onClick={handleAddEntry}
                   disabled={!newSource.trim() || !newTarget.trim()}
                   className="shrink-0 p-2.5 rounded-lg bg-primary text-white hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  <span className="material-symbols-outlined text-lg">add</span>
+                  <span className="material-symbols-outlined text-lg" aria-hidden="true">add</span>
                 </button>
               </div>
 
@@ -326,13 +345,13 @@ export default function SettingsModal() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="text-left py-2.5 px-4 font-semibold text-text-muted text-xs uppercase tracking-wider">
+                        <th scope="col" className="text-left py-2.5 px-4 font-semibold text-text-muted text-xs uppercase tracking-wider">
                           Source (KO)
                         </th>
-                        <th className="text-left py-2.5 px-4 font-semibold text-text-muted text-xs uppercase tracking-wider">
+                        <th scope="col" className="text-left py-2.5 px-4 font-semibold text-text-muted text-xs uppercase tracking-wider">
                           Target ({glossaryLang.toUpperCase()})
                         </th>
-                        <th className="w-12" />
+                        <th scope="col" className="w-12" />
                       </tr>
                     </thead>
                     <tbody>
@@ -349,10 +368,11 @@ export default function SettingsModal() {
                           </td>
                           <td className="py-2.5 px-2">
                             <button
+                              type="button"
                               onClick={() => handleDeleteEntry(source)}
                               className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
                             >
-                              <span className="material-symbols-outlined text-base">
+                              <span className="material-symbols-outlined text-base" aria-hidden="true">
                                 delete
                               </span>
                             </button>
@@ -364,7 +384,7 @@ export default function SettingsModal() {
                 </div>
               ) : (
                 <div className="text-center py-10 text-text-muted text-sm border border-dashed border-slate-200 rounded-xl">
-                  <span className="material-symbols-outlined text-3xl text-slate-300 mb-2 block">
+                  <span className="material-symbols-outlined text-3xl text-slate-300 mb-2 block" aria-hidden="true">
                     book_2
                   </span>
                   No glossary entries for {LANG_LABELS[glossaryLang]} yet.
@@ -379,12 +399,14 @@ export default function SettingsModal() {
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-8 py-5 border-t border-slate-100">
           <button
+            type="button"
             onClick={() => setOpen(false)}
             className="px-6 py-2.5 text-sm font-medium text-text-muted hover:text-text-main transition-colors"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             className="px-6 py-2.5 text-sm font-bold text-white bg-primary hover:bg-primary-dark rounded-xl transition-colors disabled:opacity-50 shadow-sm"

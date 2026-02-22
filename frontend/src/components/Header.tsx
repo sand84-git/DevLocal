@@ -46,12 +46,21 @@ export default function Header() {
       {/* Right side: connection status */}
       <div className="min-w-[240px] flex justify-end">
         {currentStep !== "idle" && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-border-subtle">
-            <span className={`w-2 h-2 rounded-full ${status.dot}`} />
-            <span className="text-xs font-medium text-text-muted">
-              {status.label}
-            </span>
-          </div>
+          currentStep === "done" ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-xs font-medium text-emerald-600">
+                Completed
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-border-subtle">
+              <span className={`w-2 h-2 rounded-full ${status.dot}`} />
+              <span className="text-xs font-medium text-text-muted">
+                {status.label}
+              </span>
+            </div>
+          )
         )}
       </div>
     </header>

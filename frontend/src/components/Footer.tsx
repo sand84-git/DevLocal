@@ -36,11 +36,12 @@ export default function Footer({
   const isIdle = currentStep === "idle";
 
   return (
-    <div className="h-24 border-t border-slate-100 bg-white/90 backdrop-blur-md px-8 shadow-[0_-4px_30px_-4px_rgba(0,0,0,0.03)] z-20 flex items-center justify-center shrink-0">
+    <div className="sticky bottom-0 h-24 border-t border-slate-100 bg-white/90 backdrop-blur-md px-8 shadow-[0_-4px_30px_-4px_rgba(0,0,0,0.03)] z-20 flex items-center justify-center shrink-0">
       <div className="w-full flex max-w-5xl items-center justify-between">
         {/* Left: Back or Cancel */}
         {showCancel ? (
           <button
+            type="button"
             onClick={onCancel}
             className="px-6 py-2.5 text-text-muted hover:text-text-main font-semibold text-sm transition-colors duration-200"
           >
@@ -50,10 +51,11 @@ export default function Footer({
           <div className="px-6 py-2.5" />
         ) : (
           <button
+            type="button"
             onClick={onBack}
             className="rounded-xl px-6 py-2.5 text-sm font-medium transition-colors duration-200 flex items-center gap-2 text-text-muted hover:bg-slate-50 hover:text-text-main"
           >
-            <span className="material-symbols-outlined text-lg">
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">
               arrow_back
             </span>
             Back
@@ -63,11 +65,13 @@ export default function Footer({
         {/* Discard button (Back 옆) */}
         {showDiscard && (
           <button
+            type="button"
             onClick={onDiscard}
+            aria-label="변경사항 폐기"
             className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
             title="Discard all changes"
           >
-            <span className="material-symbols-outlined text-lg">delete</span>
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span>
             Discard
           </button>
         )}
@@ -90,7 +94,7 @@ export default function Footer({
                 className="sr-only"
               />
               <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                   playlist_add_check
                 </span>
                 All
@@ -106,7 +110,7 @@ export default function Footer({
                 className="sr-only"
               />
               <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                   new_releases
                 </span>
                 New
@@ -118,22 +122,26 @@ export default function Footer({
 
           {/* Help button */}
           <button
+            type="button"
             onClick={() => useAppStore.getState().setHelpOpen(true)}
+            aria-label="사용자 가이드 열기"
             className="flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 shadow-sm h-12 w-12 group"
             title="User Guide"
           >
-            <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">
+            <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform" aria-hidden="true">
               help
             </span>
           </button>
 
           {/* Settings button */}
           <button
+            type="button"
             onClick={() => useAppStore.getState().setSettingsOpen(true)}
+            aria-label="번역 설정 및 용어집"
             className="flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 shadow-sm h-12 w-12 group"
             title="Custom Instructions & Glossary"
           >
-            <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">
+            <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform" aria-hidden="true">
               tune
             </span>
           </button>
@@ -141,6 +149,7 @@ export default function Footer({
           {/* Export button (step 5) */}
           {showExport && (
             <button
+              type="button"
               onClick={onExport}
               className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors duration-200 shadow-sm text-sm"
             >
@@ -150,6 +159,7 @@ export default function Footer({
 
           {/* Main action button */}
           <button
+            type="button"
             onClick={onAction}
             disabled={actionDisabled}
             className={`group flex items-center gap-3 rounded-xl px-8 py-3 text-base font-bold text-white transition-all duration-200 active:scale-[0.98] ring-offset-2 focus:ring-2 ring-primary disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -159,7 +169,7 @@ export default function Footer({
             }`}
           >
             {actionLabel}
-            <span className="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1">
+            <span className="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1" aria-hidden="true">
               {actionIcon}
             </span>
           </button>

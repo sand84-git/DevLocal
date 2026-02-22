@@ -210,7 +210,7 @@ export default function KoReviewWorkspace() {
                     href={getDownloadUrl(sessionId, "backup")}
                     className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-white px-4 py-2 text-sm font-medium text-text-muted shadow-sm transition-colors duration-200 hover:bg-slate-50 hover:text-text-main"
                   >
-                    <span className="material-symbols-outlined text-lg">
+                    <span className="material-symbols-outlined text-lg" aria-hidden="true">
                       download
                     </span>
                     Download CSV Backup
@@ -223,7 +223,7 @@ export default function KoReviewWorkspace() {
           {/* ═══ Progress Card (ALWAYS visible — never fades out) ═══ */}
           <section className="rounded-xl border border-border-subtle bg-bg-surface p-6 shadow-soft animate-fade-slide-up">
             <div className="flex items-center justify-between mb-3">
-              <span className={`text-sm font-medium text-text-muted ${!cardComplete ? "animate-breathe" : ""}`}>
+              <span className={`text-sm font-medium text-text-muted ${!cardComplete ? "animate-breathe" : ""}`} aria-live="polite">
                 {cardLabel}
               </span>
               <span
@@ -232,7 +232,7 @@ export default function KoReviewWorkspace() {
                 {animPct}%
               </span>
             </div>
-            <div className="relative w-full overflow-hidden rounded-full bg-slate-100 h-3.5">
+            <div className="relative w-full overflow-hidden rounded-full bg-slate-100 h-3.5" role="progressbar" aria-valuenow={cardPercent} aria-valuemin={0} aria-valuemax={100} aria-label="작업 진행률">
               <div
                 className={`absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out ${barColor} ${barShadow}`}
                 style={{ width: `${cardPercent}%` }}
@@ -257,6 +257,13 @@ export default function KoReviewWorkspace() {
                 />
               )}
             </div>
+
+            {/* ETA hint (loading mode only) */}
+            {mode === "loading" && !cardComplete && (
+              <p className="mt-2 text-xs text-text-muted text-center">
+                약 20~30초 소요될 수 있습니다
+              </p>
+            )}
 
             {/* Unified collapsible: completion banner OR stats — single grid-collapse to avoid jitter */}
             <div
@@ -298,7 +305,7 @@ export default function KoReviewWorkspace() {
                   </div>
                 ) : isComplete ? (
                   <div className="mt-4 pt-3 flex items-center gap-2 text-sm text-emerald-600 font-semibold animate-fade-slide-down">
-                    <span className="material-symbols-outlined animate-bounce-in">
+                    <span className="material-symbols-outlined animate-bounce-in" aria-hidden="true">
                       check_circle
                     </span>
                     Korean review complete — {partialKoResults.length} suggestions
@@ -313,7 +320,7 @@ export default function KoReviewWorkspace() {
           {mode === "loading" && originalRows.length === 0 ? (
             /* Spinner before data arrives */
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <span className="material-symbols-outlined text-5xl text-primary animate-spin360">
+              <span className="material-symbols-outlined text-5xl text-primary animate-spin360" aria-hidden="true">
                 progress_activity
               </span>
               <p className="text-sm text-text-muted animate-breathe">
@@ -327,7 +334,7 @@ export default function KoReviewWorkspace() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-border-subtle text-primary shadow-sm">
-                      <span className="material-symbols-outlined text-lg">
+                      <span className="material-symbols-outlined text-lg" aria-hidden="true">
                         table_rows
                       </span>
                     </div>
@@ -343,6 +350,7 @@ export default function KoReviewWorkspace() {
                   </div>
                   {mode === "review" && (
                     <button
+                      type="button"
                       onClick={() => {
                         setShowIssuesOnly(!showIssuesOnly);
                         setPage(1);
@@ -353,7 +361,7 @@ export default function KoReviewWorkspace() {
                           : "bg-white text-text-muted border-border-subtle hover:bg-slate-50 hover:text-text-main"
                       }`}
                     >
-                      <span className="material-symbols-outlined text-lg">
+                      <span className="material-symbols-outlined text-lg" aria-hidden="true">
                         filter_list
                       </span>
                       Filter: Issues Only
@@ -373,16 +381,16 @@ export default function KoReviewWorkspace() {
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-subtle bg-slate-50/80">
-                      <th className="px-4 py-3 text-left font-semibold text-text-muted">
+                      <th scope="col" className="px-4 py-3 text-left font-semibold text-text-muted">
                         AI Note
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-text-muted">
+                      <th scope="col" className="px-4 py-3 text-left font-semibold text-text-muted">
                         Original (Korean)
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-text-muted">
+                      <th scope="col" className="px-4 py-3 text-left font-semibold text-text-muted">
                         AI Suggested Fix
                       </th>
-                      <th className="px-4 py-3 text-center font-semibold text-text-muted">
+                      <th scope="col" className="px-4 py-3 text-center font-semibold text-text-muted">
                         {mode === "review" ? "Action" : "Status"}
                       </th>
                     </tr>
@@ -416,6 +424,7 @@ export default function KoReviewWorkspace() {
                                 {isDone && review?.comment ? (
                                   <div className="relative">
                                     <button
+                                      type="button"
                                       onClick={() =>
                                         setExpandedNote(
                                           expandedNote === row.key
@@ -429,7 +438,7 @@ export default function KoReviewWorkspace() {
                                           : "text-text-muted hover:text-primary hover:bg-primary-light/50"
                                       }`}
                                     >
-                                      <span className="material-symbols-outlined text-lg">
+                                      <span className="material-symbols-outlined text-lg" aria-hidden="true">
                                         sticky_note_2
                                       </span>
                                       <span className="hidden xl:inline">
@@ -480,14 +489,14 @@ export default function KoReviewWorkspace() {
                                 {isDone ? (
                                   hasIssue ? (
                                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600">
-                                      <span className="material-symbols-outlined text-sm">
+                                      <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                         edit_note
                                       </span>
                                       Revised
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
-                                      <span className="material-symbols-outlined text-sm">
+                                      <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                         check
                                       </span>
                                       OK
@@ -495,21 +504,21 @@ export default function KoReviewWorkspace() {
                                   )
                                 ) : agentPhase === "complete" ? (
                                   <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
-                                    <span className="material-symbols-outlined text-sm">
+                                    <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                       check
                                     </span>
                                     OK
                                   </span>
                                 ) : agentPhase === "reviewing" ? (
                                   <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-light/50 px-2.5 py-0.5 text-xs font-medium text-primary animate-breathe">
-                                    <span className="material-symbols-outlined text-sm animate-spin360">
+                                    <span className="material-symbols-outlined text-sm animate-spin360" aria-hidden="true">
                                       progress_activity
                                     </span>
                                     Reviewing
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-400 animate-breathe">
-                                    <span className="material-symbols-outlined text-sm">
+                                    <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                       hourglass_empty
                                     </span>
                                     Pending
@@ -540,7 +549,7 @@ export default function KoReviewWorkspace() {
                               <td className="px-4 py-3">
                                 {isResolved ? (
                                   <div className="flex items-center justify-center gap-1.5 text-emerald-700 text-xs font-medium opacity-80">
-                                    <span className="material-symbols-outlined text-base">
+                                    <span className="material-symbols-outlined text-base" aria-hidden="true">
                                       check_circle
                                     </span>
                                     Resolved
@@ -548,6 +557,7 @@ export default function KoReviewWorkspace() {
                                 ) : item.comment ? (
                                   <div className="relative">
                                     <button
+                                      type="button"
                                       onClick={() =>
                                         setExpandedNote(
                                           expandedNote === item.key
@@ -561,7 +571,7 @@ export default function KoReviewWorkspace() {
                                           : "text-text-muted hover:text-primary hover:bg-primary-light/50"
                                       }`}
                                     >
-                                      <span className="material-symbols-outlined text-lg">
+                                      <span className="material-symbols-outlined text-lg" aria-hidden="true">
                                         sticky_note_2
                                       </span>
                                       <span className="hidden xl:inline">
@@ -616,7 +626,7 @@ export default function KoReviewWorkspace() {
                                 ) : noIssue ? (
                                   <div className="flex justify-center">
                                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
-                                      <span className="material-symbols-outlined text-sm">
+                                      <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                         check
                                       </span>
                                       OK
@@ -625,24 +635,28 @@ export default function KoReviewWorkspace() {
                                 ) : (
                                   <div className="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                                     <button
+                                      type="button"
                                       onClick={() =>
                                         setKoDecision(item.key, "rejected")
                                       }
                                       className="rounded-md p-1.5 text-text-muted hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
                                       title="Reject"
+                                      aria-label="수정 거부"
                                     >
-                                      <span className="material-symbols-outlined text-xl">
+                                      <span className="material-symbols-outlined text-xl" aria-hidden="true">
                                         close
                                       </span>
                                     </button>
                                     <button
+                                      type="button"
                                       onClick={() =>
                                         setKoDecision(item.key, "accepted")
                                       }
                                       className="rounded-md p-1.5 text-primary hover:bg-primary-light hover:text-primary-dark transition-colors duration-200"
                                       title="Accept"
+                                      aria-label="수정 수락"
                                     >
-                                      <span className="material-symbols-outlined text-xl">
+                                      <span className="material-symbols-outlined text-xl" aria-hidden="true">
                                         check
                                       </span>
                                     </button>
@@ -669,9 +683,11 @@ export default function KoReviewWorkspace() {
                   </span>
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
                       className="px-2.5 py-1 rounded text-xs font-medium text-text-muted hover:bg-slate-100 active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="이전 페이지"
                     >
                       Prev
                     </button>
@@ -681,6 +697,7 @@ export default function KoReviewWorkspace() {
                         const p = i + 1;
                         return (
                           <button
+                            type="button"
                             key={p}
                             onClick={() => setPage(p)}
                             className={`w-7 h-7 rounded text-xs font-medium active:scale-[0.97] ${
@@ -695,11 +712,13 @@ export default function KoReviewWorkspace() {
                       },
                     )}
                     <button
+                      type="button"
                       onClick={() =>
                         setPage((p) => Math.min(totalPages, p + 1))
                       }
                       disabled={page === totalPages}
                       className="px-2.5 py-1 rounded text-xs font-medium text-text-muted hover:bg-slate-100 active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="다음 페이지"
                     >
                       Next
                     </button>
@@ -715,10 +734,10 @@ export default function KoReviewWorkspace() {
       {error && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 max-w-lg w-full px-4">
           <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 shadow-lg animate-fade-slide-up">
-            <span className="material-symbols-outlined text-lg">error</span>
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">error</span>
             <span className="flex-1">{error}</span>
-            <button onClick={() => setError("")} className="p-1 hover:bg-red-100 rounded">
-              <span className="material-symbols-outlined text-base">close</span>
+            <button type="button" onClick={() => setError("")} className="p-1 hover:bg-red-100 rounded" aria-label="오류 닫기">
+              <span className="material-symbols-outlined text-base" aria-hidden="true">close</span>
             </button>
           </div>
         </div>

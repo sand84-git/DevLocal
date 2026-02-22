@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -22,6 +23,7 @@ export default function ConfirmModal({
   variant = "warning",
 }: ConfirmModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
 
   /* ESC 키로 닫기 */
   useEffect(() => {
@@ -57,14 +59,19 @@ export default function ConfirmModal({
       {/* Panel */}
       <div
         ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
         className="relative bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 animate-fade-slide-up"
       >
         {/* Close button */}
         <button
+          type="button"
           onClick={onClose}
+          aria-label="닫기"
           className="absolute top-4 right-4 text-text-muted hover:text-text-main transition-colors duration-200"
         >
-          <span className="material-symbols-outlined text-xl">close</span>
+          <span className="material-symbols-outlined text-xl" aria-hidden="true">close</span>
         </button>
 
         {/* Icon + Title */}
@@ -72,12 +79,12 @@ export default function ConfirmModal({
           <div
             className={`flex-shrink-0 w-12 h-12 rounded-full ${iconBg} flex items-center justify-center`}
           >
-            <span className={`material-symbols-outlined text-2xl ${iconColor}`}>
+            <span className={`material-symbols-outlined text-2xl ${iconColor}`} aria-hidden="true">
               {iconName}
             </span>
           </div>
           <div className="pt-1">
-            <h3 className="text-lg font-bold text-text-main">{title}</h3>
+            <h3 id="confirm-modal-title" className="text-lg font-bold text-text-main">{title}</h3>
           </div>
         </div>
 
@@ -89,12 +96,14 @@ export default function ConfirmModal({
         {/* Actions */}
         <div className="flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="px-6 py-2.5 rounded-lg border border-border-subtle text-text-muted hover:bg-surface-pale font-semibold text-sm transition-colors duration-200"
           >
             {cancelLabel}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             className={`px-6 py-2.5 rounded-lg text-white font-bold text-sm transition-all duration-200 shadow-lg ${confirmBg}`}
           >

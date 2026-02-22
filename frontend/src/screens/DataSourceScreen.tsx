@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAppStore } from "../store/useAppStore";
+import { useToastStore } from "../store/toastStore";
 import { connectSheet, startPipeline, getConfig, saveConfig } from "../api/client";
+import { validateSheetUrl, validateRowRange, SHEETS_URL_REGEX } from "../utils/validation";
 import Footer from "../components/Footer";
 
 export default function DataSourceScreen() {
@@ -27,6 +29,8 @@ export default function DataSourceScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [synopsis, setSynopsis] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [rowRangeError, setRowRangeError] = useState<string | null>(null);
 
   // Load saved config on mount
   useEffect(() => {
@@ -50,8 +54,14 @@ export default function DataSourceScreen() {
 
   async function handleConnect() {
     if (!sheetUrl.trim()) return;
+    const urlErr = validateSheetUrl(sheetUrl);
+    if (urlErr) {
+      setUrlError(urlErr);
+      return;
+    }
     setConnecting(true);
     setError("");
+    setUrlError(null);
     try {
       const res = await connectSheet({ sheet_url: sheetUrl });
       setSheetNames(res.sheet_names);
@@ -64,29 +74,50 @@ export default function DataSourceScreen() {
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Connection failed");
+      const msg = e instanceof Error ? e.message : "Connection failed";
+      setError(msg);
+      useToastStore.getState().addToast(msg);
     } finally {
       setConnecting(false);
     }
   }
 
   async function handleLoad() {
+    // URL 사전 검증
+    const urlErr = validateSheetUrl(sheetUrl);
+    if (urlErr) {
+      setUrlError(urlErr);
+      return;
+    }
+    // Row Range 사전 검증
+    const rangeErr = validateRowRange(rowStart, rowEnd);
+    if (rangeErr) {
+      setRowRangeError(rangeErr);
+      return;
+    }
+
+    // 즉시 로딩 상태 전환 (2-1, 2-2)
+    setLoading(true);
+    setError("");
+    setCurrentStep("loading");
+
     if (allSheetsMode) {
       // All Sheets 모드: 시트 큐 세팅 후 첫 시트로 시작
       setSheetQueue([...sheetNames]);
       await startSheet(sheetNames[0]);
       saveConfig({ saved_url: sheetUrl, saved_sheet: "__ALL_SHEETS__" }).catch(() => {});
     } else {
-      if (!selectedSheet) return;
+      if (!selectedSheet) {
+        setLoading(false);
+        setCurrentStep("idle");
+        return;
+      }
       await startSheet(selectedSheet);
       saveConfig({ saved_url: sheetUrl, saved_sheet: selectedSheet }).catch(() => {});
     }
   }
 
   async function startSheet(sheetName: string) {
-    setLoading(true);
-    setError("");
-    setCurrentStep("loading");
     try {
       const res = await startPipeline({
         sheet_url: sheetUrl,
@@ -114,44 +145,49 @@ export default function DataSourceScreen() {
         </div>
 
         <div className="w-full max-w-2xl space-y-8">
-          {/* Title section — crossfade, fixed height, no jitter */}
-          <div className="relative mb-8 h-32">
-            {/* Default state */}
-            <div className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-500 ease-out ${
-              projectName ? "opacity-0 -translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"
-            }`}>
-              <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
-                Data Source Configuration
-              </h3>
-              <p className="text-text-muted text-base max-w-lg mx-auto leading-relaxed mt-2">
-                Connect your master Google Sheet to seamlessly sync and
-                automate your localization workflow.
-              </p>
-            </div>
-            {/* Project loaded state */}
-            <div className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-500 ease-out ${
-              projectName ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"
-            }`}>
-              <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
-                <span className="text-primary">'{projectName}'</span> loaded
-              </h3>
-              {synopsis && (
-                <p className="text-text-muted text-sm max-w-md mx-auto leading-relaxed mt-2 line-clamp-3">
-                  {synopsis}
+          {/* Title section — conditional rendering */}
+          <div className="mb-8 flex flex-col items-center justify-center text-center min-h-[8rem]">
+            {projectName ? (
+              <div className="animate-fade-slide-up">
+                <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
+                  <span className="text-primary">'{projectName}'</span> loaded
+                </h3>
+                {synopsis && (
+                  <p className="text-text-muted text-sm max-w-md mx-auto leading-relaxed mt-2 line-clamp-3">
+                    {synopsis}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-3xl md:text-4xl font-bold text-text-main tracking-tight">
+                  Data Source Configuration
+                </h3>
+                <p className="text-text-muted text-base max-w-lg mx-auto leading-relaxed mt-2">
+                  Connect your master Google Sheet to seamlessly sync and
+                  automate your localization workflow.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Main card — glassmorphism */}
-          <section className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-xl p-8 md:p-10 shadow-soft ring-1 ring-slate-900/5 animate-fade-slide-up">
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleLoad(); }}
+            noValidate
+            className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-xl p-8 md:p-10 shadow-soft ring-1 ring-slate-900/5 animate-fade-slide-up"
+          >
             <div className="grid grid-cols-1 gap-8">
               {/* Google Sheet URL */}
               <div className="space-y-4">
-                <label className="block text-sm font-semibold text-text-main">
+                <label htmlFor="sheet-url" className="block text-sm font-semibold text-text-main">
                   Google Sheet URL
                 </label>
-                <div className="group relative flex rounded-xl bg-white ring-1 ring-inset ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 shadow-sm transition-all duration-200 hover:ring-slate-300">
+                <div className={`group relative flex rounded-xl bg-white ring-1 ring-inset shadow-sm transition-all duration-200 ${
+                  urlError
+                    ? "ring-red-400 focus-within:ring-2 focus-within:ring-red-400"
+                    : "ring-slate-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:ring-slate-300"
+                }`}>
                   <div className="flex items-center pl-4 border-r border-slate-100 pr-3 bg-slate-50 rounded-l-xl">
                     <img
                       src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUTqR4611swIA4vQeI__WyiAAbdng68ytwlBVg0LUOxyEVpLnOeYFifEtfXArHcrWhXg51tjJLt4F3idymF3-vNCwgv0gu5cR_PdO0VtpNgxwdUTFVSfF_z16U33SHbM1xrP5Wd_RMPShKEUXu9jpybl21XKiHuCYosPvZz5-XnkBankOR0q9OW9UqM3nte6ncfz_LOndztvFBksYyw8jyWPxRdS60e4xi04GtCfu34hkVyKJ-Gsgb6iMmGaxaULvp1AfYnMwGFQ"
@@ -160,28 +196,51 @@ export default function DataSourceScreen() {
                     />
                   </div>
                   <input
+                    id="sheet-url"
                     type="text"
                     value={sheetUrl}
-                    onChange={(e) => setSheetUrl(e.target.value)}
+                    aria-describedby={urlError ? "sheet-url-error" : "sheet-url-hint"}
+                    onChange={(e) => {
+                      setSheetUrl(e.target.value);
+                      // 입력 중 에러 클리어 (유효해지면)
+                      if (urlError && SHEETS_URL_REGEX.test(e.target.value)) {
+                        setUrlError(null);
+                      }
+                    }}
                     onBlur={() => {
-                      if (sheetUrl.trim() && sheetNames.length === 0)
-                        handleConnect();
+                      if (!sheetUrl.trim()) return;
+                      if (!SHEETS_URL_REGEX.test(sheetUrl)) {
+                        setUrlError("올바른 Google Sheets URL을 입력해주세요");
+                        return;
+                      }
+                      setUrlError(null);
+                      if (sheetNames.length === 0) handleConnect();
                     }}
                     placeholder="https://docs.google.com/spreadsheets/d/..."
                     className="block w-full border-0 bg-transparent py-4 pl-4 text-text-main placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 rounded-r-xl"
                   />
                   <div className="flex items-center pr-2">
                     <button
+                      type="button"
                       onClick={handleConnect}
                       disabled={connecting}
+                      aria-label="시트 연결"
                       className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/5 transition-colors duration-200"
                     >
-                      <span className="material-symbols-outlined text-xl">
+                      <span className="material-symbols-outlined text-xl" aria-hidden="true">
                         {connecting ? "sync" : "content_paste"}
                       </span>
                     </button>
                   </div>
                 </div>
+
+                {/* Inline URL Error */}
+                {urlError && (
+                  <div id="sheet-url-error" className="flex items-center gap-1.5 text-xs text-red-600 animate-fade-slide-down">
+                    <span className="material-symbols-outlined text-sm" aria-hidden="true">error</span>
+                    {urlError}
+                  </div>
+                )}
 
                 {/* Status / Info */}
                 {connecting ? (
@@ -204,8 +263,8 @@ export default function DataSourceScreen() {
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-2 text-xs text-text-muted bg-blue-50/50 p-2 rounded-lg border border-blue-100/50">
-                    <span className="material-symbols-outlined text-sm text-primary mt-0.5">
+                  <div id="sheet-url-hint" className="flex items-start gap-2 text-xs text-text-muted bg-blue-50/50 p-2 rounded-lg border border-blue-100/50">
+                    <span className="material-symbols-outlined text-sm text-primary mt-0.5" aria-hidden="true">
                       info
                     </span>
                     <span>
@@ -219,11 +278,12 @@ export default function DataSourceScreen() {
               {/* Sheet Tab + Row Range */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-text-main">
+                  <label htmlFor="sheet-tab" className="mb-2 block text-sm font-semibold text-text-main">
                     Sheet Tab Name
                   </label>
                   <div className="relative">
                     <select
+                      id="sheet-tab"
                       value={allSheetsMode ? "__ALL_SHEETS__" : selectedSheet}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -261,15 +321,25 @@ export default function DataSourceScreen() {
                   </div>
                 </div>
                 <div className={allSheetsMode ? "opacity-50 pointer-events-none" : ""}>
-                  <label className="mb-2 block text-sm font-semibold text-text-main">
+                  <label htmlFor="row-start" className="mb-2 block text-sm font-semibold text-text-main">
                     Row Range
                   </label>
                   <div className="flex items-center gap-3">
                     <div className="relative w-full">
                       <input
+                        id="row-start"
                         type="number"
                         value={rowStart || ""}
-                        onChange={(e) => setRowStart(Number(e.target.value))}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          setRowStart(v);
+                          if (rowRangeError) setRowRangeError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "-" || e.key === "." || e.key === "e") e.preventDefault();
+                        }}
+                        min={1}
+                        step={1}
                         placeholder="1"
                         disabled={allSheetsMode}
                         className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
@@ -279,26 +349,36 @@ export default function DataSourceScreen() {
                       -
                     </span>
                     <div className="relative w-full">
-                      <div className="group relative">
-                        <input
-                          type="number"
-                          value={rowEnd || ""}
-                          onChange={(e) => {
-                            const v = Number(e.target.value);
-                            setRowEnd(v);
-                            setRowLimit(v > 0 ? v - rowStart : 0);
-                          }}
-                          placeholder="&#8734;"
-                          disabled={allSheetsMode}
-                          className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400 placeholder:text-2xl"
-                        />
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                          Empty = Auto-detect
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                        </div>
-                      </div>
+                      <input
+                        id="row-end"
+                        type="number"
+                        value={rowEnd || ""}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          setRowEnd(v);
+                          setRowLimit(v > 0 ? v - rowStart : 0);
+                          if (rowRangeError) setRowRangeError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "-" || e.key === "." || e.key === "e") e.preventDefault();
+                        }}
+                        min={1}
+                        step={1}
+                        placeholder="끝까지"
+                        disabled={allSheetsMode}
+                        className="block w-full rounded-xl border-0 bg-white py-3.5 px-3 text-center text-text-main ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm transition-all hover:ring-slate-300 placeholder:text-slate-400"
+                      />
                     </div>
                   </div>
+                  {rowRangeError ? (
+                    <p className="text-xs text-red-600 mt-1.5 animate-fade-slide-down">
+                      {rowRangeError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-text-muted mt-1.5">
+                      비워두면 마지막 행까지 자동 감지
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -312,15 +392,15 @@ export default function DataSourceScreen() {
                 {error}
               </div>
             )}
-          </section>
+          </form>
         </div>
       </main>
 
       <Footer
         onAction={handleLoad}
         actionLabel={loading ? "Loading..." : "Load Data"}
-        actionIcon={loading ? "sync" : "arrow_forward"}
-        actionDisabled={(!selectedSheet && !allSheetsMode) || loading}
+        actionIcon={loading ? "progress_activity" : "arrow_forward"}
+        actionDisabled={(!selectedSheet && !allSheetsMode) || loading || !!validateSheetUrl(sheetUrl) || !!rowRangeError}
       />
     </>
   );

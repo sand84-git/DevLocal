@@ -236,3 +236,14 @@
 .animation-delay-2000 {
   animation-delay: 2s;
 }
+
+/* ── Respect prefers-reduced-motion (WCAG AA) ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

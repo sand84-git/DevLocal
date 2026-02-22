@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAppStore } from "../store/useAppStore";
 import { getGuide, getConfig } from "../api/client";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import type { GuideSection } from "../api/client";
 
 export default function HelpModal() {
@@ -16,6 +17,9 @@ export default function HelpModal() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const backdropRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(panelRef, open);
 
   // Load guide when modal opens
   useEffect(() => {
@@ -73,27 +77,34 @@ export default function HelpModal() {
         if (e.target === backdropRef.current) setOpen(false);
       }}
     >
-      <div className="w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col h-[80vh] animate-fade-slide-up">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="help-modal-title"
+        className="w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col h-[80vh] animate-fade-slide-up"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-8 pt-7 pb-2">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-2xl">
+            <span className="material-symbols-outlined text-primary text-2xl" aria-hidden="true">
               menu_book
             </span>
-            <h2 className="text-xl font-bold text-text-main">User Guide</h2>
+            <h2 id="help-modal-title" className="text-xl font-bold text-text-main">User Guide</h2>
           </div>
           <button
+            type="button"
             onClick={() => setOpen(false)}
             className="p-2 text-text-muted hover:text-text-main hover:bg-slate-100 rounded-lg transition-colors"
           >
-            <span className="material-symbols-outlined text-xl">close</span>
+            <span className="material-symbols-outlined text-xl" aria-hidden="true">close</span>
           </button>
         </div>
 
         {/* Bot email card */}
         {email && (
           <div className="mx-8 mt-3 flex items-center gap-3 bg-primary-light/50 border border-primary/20 rounded-xl p-3">
-            <span className="material-symbols-outlined text-primary text-lg">
+            <span className="material-symbols-outlined text-primary text-lg" aria-hidden="true">
               mail
             </span>
             <div className="flex-1 min-w-0">
@@ -105,11 +116,13 @@ export default function HelpModal() {
               </p>
             </div>
             <button
+              type="button"
               onClick={handleCopy}
               className="shrink-0 p-1.5 rounded-md text-text-muted hover:text-primary hover:bg-primary/5 transition-colors duration-200"
               title="Copy"
+              aria-label="복사"
             >
-              <span className="material-symbols-outlined text-base">
+              <span className="material-symbols-outlined text-base" aria-hidden="true">
                 {copied ? "check" : "content_copy"}
               </span>
             </button>
@@ -119,9 +132,12 @@ export default function HelpModal() {
         {/* Tab bar */}
         {sections.length > 0 && (
           <div className="px-8 pt-4 pb-2 shrink-0">
-            <div className="flex gap-0.5 overflow-x-auto bg-slate-100/80 rounded-xl p-1.5 border border-slate-200 scrollbar-hide">
+            <div role="tablist" className="flex gap-0.5 overflow-x-auto bg-slate-100/80 rounded-xl p-1.5 border border-slate-200 scrollbar-hide">
               {sections.map((s) => (
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === s.id}
                   key={s.id}
                   onClick={() => setActiveTab(s.id)}
                   className={`shrink-0 px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
@@ -138,10 +154,10 @@ export default function HelpModal() {
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-8 py-5 custom-scrollbar">
+        <div role="tabpanel" className="flex-1 overflow-y-auto px-8 py-5 custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <span className="material-symbols-outlined text-3xl text-primary animate-spin360">
+              <span className="material-symbols-outlined text-3xl text-primary animate-spin360" aria-hidden="true">
                 progress_activity
               </span>
             </div>
@@ -156,7 +172,7 @@ export default function HelpModal() {
             </div>
           ) : (
             <div className="text-center py-20 text-text-muted text-sm">
-              <span className="material-symbols-outlined text-3xl text-slate-300 mb-2 block">
+              <span className="material-symbols-outlined text-3xl text-slate-300 mb-2 block" aria-hidden="true">
                 menu_book
               </span>
               No guide content available.

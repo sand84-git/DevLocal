@@ -41,7 +41,7 @@ export default function DoneScreen() {
             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-sky-400/10 rounded-full blur-2xl" />
             <div className="flex items-start gap-6 relative z-10">
               <div className="size-16 bg-white rounded-xl shadow-sm border border-border-subtle flex items-center justify-center shrink-0 text-success">
-                <span className="material-symbols-outlined text-4xl">
+                <span className="material-symbols-outlined text-4xl" aria-hidden="true">
                   task_alt
                 </span>
               </div>
@@ -148,7 +148,7 @@ function MetricCard({
   return (
     <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl shadow-soft hover:shadow-md transition-shadow duration-200 flex flex-col items-center text-center">
       <div className={`p-3 rounded-full ${iconColor} mb-3`}>
-        <span className="material-symbols-outlined text-2xl">{icon}</span>
+        <span className="material-symbols-outlined text-2xl" aria-hidden="true">{icon}</span>
       </div>
       <p className="text-text-muted text-xs font-medium uppercase tracking-wider mb-1">
         {label}

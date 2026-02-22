@@ -47,6 +47,7 @@ export default function StepIndicator({
             <li
               key={step.label}
               className="relative flex flex-col items-center group flex-1"
+              {...(isCurrent ? { "aria-current": "step" as const } : {})}
             >
               <div className="flex items-center w-full">
                 {/* Left connector line */}
