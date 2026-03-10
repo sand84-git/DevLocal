@@ -23,6 +23,7 @@ COPY backend/ backend/
 COPY agents/ agents/
 COPY config/ config/
 COPY utils/ utils/
+COPY docs/ docs/
 
 # React 빌드 결과물 복사
 COPY --from=frontend-build /app/frontend/dist frontend/dist
