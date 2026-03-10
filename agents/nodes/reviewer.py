@@ -84,12 +84,14 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
         key = item["key"]
         lang = item["lang"]
         translated = item.get("translated", "")
+        row_index = item.get("row_index")
 
         if item.get("error"):
             failed_rows.append({
                 "key": key,
                 "lang": lang,
                 "reason": f"번역 오류: {item['error']}",
+                "row_index": row_index,
             })
             continue
 
@@ -121,6 +123,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
                     "shared_comments": shared_comments,
                     "translated": translated,
                     "feedback": tag_result["errors"],
+                    "row_index": row_index,
                 })
                 logs.append(
                     f"[Node 4] 태그 검증 실패 → 재번역 요청 "
@@ -133,6 +136,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
                     "lang": lang,
                     "reason": f"태그 검증 {MAX_RETRY_COUNT}회 실패: "
                               f"{'; '.join(tag_result['errors'])}",
+                    "row_index": row_index,
                 })
                 logs.append(
                     f"[Node 4] 태그 검증 {MAX_RETRY_COUNT}회 초과 → "
@@ -160,6 +164,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
             "source_ko": source_ko,
             "old_translation": old_translation,
             "warnings": warnings,
+            "row_index": row_index,
         })
 
     logs.append(
@@ -276,6 +281,7 @@ def reviewer_node(state: LocalizationState, config: RunnableConfig) -> dict:
                     "old_translation": item["old_translation"],
                     "original_ko": item["source_ko"],
                     "reason": reason,
+                    "row_index": item.get("row_index"),
                 })
 
             new_review_results.extend(chunk_results)

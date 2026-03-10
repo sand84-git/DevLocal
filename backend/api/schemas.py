@@ -19,7 +19,8 @@ class StartRequest(BaseModel):
     sheet_name: str
     mode: str = "A"
     target_languages: list = ["en", "ja"]
-    row_limit: int = 0
+    row_start: int = 0
+    row_end: int = 0
 
 
 class StartResponse(BaseModel):

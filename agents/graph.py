@@ -57,8 +57,9 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
     for row in original_data:
         key = row.get(REQUIRED_COLUMNS["key"], "")
         ko_text = row.get(REQUIRED_COLUMNS["korean"], "")
+        row_index = row.get("_row_index")
         if ko_text:
-            ko_rows.append({"key": key, REQUIRED_COLUMNS["korean"]: ko_text})
+            ko_rows.append({"key": key, REQUIRED_COLUMNS["korean"]: ko_text, "_row_index": row_index})
 
     logs.append(f"[한국어 검수] 대상: {len(ko_rows)}행")
 
@@ -69,6 +70,12 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
     processed_count = 0
     # 태그 검증용 원문 맵 (per-chunk 검증에 사용)
     original_map = {r["key"]: r[REQUIRED_COLUMNS["korean"]] for r in ko_rows}
+    # row_index 맵 (순서 기반 — 중복 Key 대응)
+    key_to_row_indices: dict[str, list[int]] = {}
+    for r in ko_rows:
+        key_to_row_indices.setdefault(r["key"], []).append(r.get("_row_index"))
+    # 전역 소비 카운터 (청크 간 연속)
+    key_consume_counter: dict[str, int] = {}
     restored_count = 0
 
     for chunk_start in range(0, len(ko_rows), CHUNK_SIZE):
@@ -103,10 +110,16 @@ def ko_review_node(state: LocalizationState, config: RunnableConfig) -> dict:
                 content = content.split("\n", 1)[-1].rsplit("```", 1)[0]
 
             items = json.loads(content)
-            # LLM 필드 변환: changes → comment, has_issue 추가
+            # LLM 필드 변환: changes → comment, has_issue 추가 + row_index 매칭
             for item in items:
                 item["comment"] = item.pop("changes", "")
                 item["has_issue"] = item.get("original", "") != item.get("revised", "")
+                ikey = item.get("key", "")
+                cidx = key_consume_counter.get(ikey, 0)
+                key_consume_counter[ikey] = cidx + 1
+                ri_list = key_to_row_indices.get(ikey, [])
+                if cidx < len(ri_list):
+                    item["row_index"] = ri_list[cidx]
 
             # Per-chunk 태그 검증 (drip-feed 발행 전)
             for item in items:

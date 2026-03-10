@@ -120,14 +120,26 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
 
                 translated_items = json.loads(content)
 
+                # 재시도 청크의 key→row_index 매핑
+                retry_key_to_ri: dict[str, list] = {}
+                for src in chunk:
+                    retry_key_to_ri.setdefault(src["key"], []).append(src.get("row_index"))
+                retry_key_counter: dict[str, int] = {}
+
                 for ti in translated_items:
                     translated_text = ti.get("translated", "")
                     translated_text = translated_text.replace('\n', '\\n')
                     translated_text = translated_text.replace('\t', '\\t')
+                    tkey = ti["key"]
+                    cidx = retry_key_counter.get(tkey, 0)
+                    retry_key_counter[tkey] = cidx + 1
+                    ri_list = retry_key_to_ri.get(tkey, [])
+                    ri = ri_list[cidx] if cidx < len(ri_list) else None
                     all_results.append({
-                        "key": ti["key"],
+                        "key": tkey,
                         "lang": lang,
                         "translated": translated_text,
+                        "row_index": ri,
                     })
 
             except Exception as e:
@@ -140,6 +152,7 @@ def _translate_retry(state: LocalizationState, needs_retry: list[dict]) -> dict:
                         "lang": lang,
                         "translated": "",
                         "error": str(e),
+                        "row_index": item.get("row_index"),
                     })
 
     return {
@@ -274,18 +287,29 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
 
                 translated_items = json.loads(content)
 
+                # 청크 소스 행의 key→row_index 매핑 (순서 기반, 중복 Key 대응)
+                chunk_key_to_ri: dict[str, list[int]] = {}
+                for src_row in chunk:
+                    sk = src_row.get(REQUIRED_COLUMNS["key"], "")
+                    chunk_key_to_ri.setdefault(sk, []).append(src_row.get("_row_index"))
+                chunk_key_counter: dict[str, int] = {}
+
                 chunk_results = []
                 for item in translated_items:
                     translated_text = item.get("translated", "")
                     # Fix: LLM이 JSON에서 \n을 실제 개행으로 출력하는 문제 보정
-                    # json.loads()가 \n → 실제 줄바꿈으로 변환하므로,
-                    # 게임 텍스트의 literal \n 태그를 복원
                     translated_text = translated_text.replace('\n', '\\n')
                     translated_text = translated_text.replace('\t', '\\t')
+                    ikey = item["key"]
+                    cidx = chunk_key_counter.get(ikey, 0)
+                    chunk_key_counter[ikey] = cidx + 1
+                    ri_list = chunk_key_to_ri.get(ikey, [])
+                    ri = ri_list[cidx] if cidx < len(ri_list) else None
                     result_item = {
-                        "key": item["key"],
+                        "key": ikey,
                         "lang": lang,
                         "translated": translated_text,
+                        "row_index": ri,
                     }
                     all_results.append(result_item)
                     chunk_results.append(result_item)
@@ -310,6 +334,7 @@ def translator_node(state: LocalizationState, config: RunnableConfig) -> dict:
                         "lang": lang,
                         "translated": "",
                         "error": str(e),
+                        "row_index": row.get("_row_index"),
                     })
 
     return {

@@ -23,7 +23,8 @@ export interface StartRequest {
   sheet_name: string;
   mode: string;
   target_languages: string[];
-  row_limit: number;
+  row_start: number;
+  row_end: number;
 }
 
 export interface StartResponse {
@@ -65,6 +66,7 @@ export interface KoReviewItem {
   revised: string;
   comment: string;
   has_issue: boolean;
+  row_index?: number;
 }
 
 export interface ReviewItem {
@@ -75,12 +77,14 @@ export interface ReviewItem {
   translated: string;
   reason: string;
   status: string;
+  row_index?: number;
 }
 
 export interface FailedRow {
   key: string;
   lang: string;
-  error: string;
+  reason: string;
+  row_index?: number;
 }
 
 /* ── SSE Event Types ── */
@@ -120,6 +124,7 @@ export interface FinalReviewReadyData {
 export interface OriginalRow {
   key: string;
   korean: string;
+  row_index?: number;
 }
 
 export interface ChunkProgress {
@@ -132,6 +137,7 @@ export interface TranslationChunkItem {
   key: string;
   lang: string;
   translated: string;
+  row_index?: number;
 }
 
 export interface KoReviewChunkData {

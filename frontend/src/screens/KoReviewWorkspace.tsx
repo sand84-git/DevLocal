@@ -53,7 +53,7 @@ export default function KoReviewWorkspace() {
   const showStats = mode === "review";
 
   /* ── Row drip-feed animation ── */
-  const doneKeysRef = useRef(new Set<string>());
+  const doneIndicesRef = useRef(new Set<string>());
 
   /* ── Derived — Review mode (카드 전환에 필요하므로 먼저 선언) ── */
   const issueItems = useMemo(
@@ -91,14 +91,15 @@ export default function KoReviewWorkspace() {
     : "shadow-[0_0_12px_rgba(14,165,233,0.3)]";
   const pctColor = cardComplete ? "text-emerald-500" : "text-primary";
 
-  // Map partial results by key for fast lookup (loading mode)
+  // Map partial results by row_index (or key fallback) for fast lookup (loading mode)
   const reviewMap = useMemo(() => {
     const m = new Map<
       string,
       { revised: string; comment: string; has_issue: boolean }
     >();
     for (const r of partialKoResults) {
-      m.set(r.key, {
+      const mapKey = r.row_index != null ? `ri_${r.row_index}` : r.key;
+      m.set(mapKey, {
         revised: r.revised,
         comment: r.comment,
         has_issue: r.has_issue,
@@ -123,7 +124,10 @@ export default function KoReviewWorkspace() {
 
   /* ── Derived: 미확인 이슈 수 ── */
   const undecidedCount = useMemo(
-    () => issueItems.filter((item) => !koDecisions[item.key]).length,
+    () => issueItems.filter((item) => {
+      const dk = item.row_index != null ? `ri_${item.row_index}` : item.key;
+      return !koDecisions[dk];
+    }).length,
     [issueItems, koDecisions],
   );
 
@@ -134,7 +138,8 @@ export default function KoReviewWorkspace() {
     try {
       // 미확인 항목은 자동으로 accepted 처리
       for (const item of issueItems) {
-        if (!koDecisions[item.key]) setKoDecision(item.key, "accepted");
+        const dk = item.row_index != null ? `ri_${item.row_index}` : item.key;
+        if (!koDecisions[dk]) setKoDecision(dk, "accepted");
       }
       await approveKo(sessionId, { decision: "approved" });
       setCurrentStep("translating");
@@ -261,7 +266,14 @@ export default function KoReviewWorkspace() {
             {/* ETA hint (loading mode only) */}
             {mode === "loading" && !cardComplete && (
               <p className="mt-2 text-xs text-text-muted text-center">
-                약 20~30초 소요될 수 있습니다
+                {(() => {
+                  const rows = originalRows.length || 1;
+                  const totalSec = Math.ceil(rows / 25) * 15;
+                  const totalMin = Math.ceil(totalSec / 60);
+                  return totalMin <= 1
+                    ? "약 1분 이내 소요 예상"
+                    : `약 ${totalMin}분 소요 예상`;
+                })()}
               </p>
             )}
 
@@ -399,20 +411,21 @@ export default function KoReviewWorkspace() {
                     {mode === "loading"
                       ? /* ── Loading mode rows ── */
                         (pageItems as typeof originalRows).map((row) => {
-                          const review = reviewMap.get(row.key);
+                          const mapKey = row.row_index != null ? `ri_${row.row_index}` : row.key;
+                          const review = reviewMap.get(mapKey);
                           const isDone = !!review;
                           const hasIssue = review?.has_issue ?? false;
 
                           // Drip-feed row animation
                           let showRowAnim = false;
-                          if (isDone && !doneKeysRef.current.has(row.key)) {
-                            doneKeysRef.current.add(row.key);
+                          if (isDone && !doneIndicesRef.current.has(mapKey)) {
+                            doneIndicesRef.current.add(mapKey);
                             showRowAnim = true;
                           }
 
                           return (
                             <tr
-                              key={row.key}
+                              key={row.row_index ?? row.key}
                               className={`border-b border-border-subtle transition-all duration-200 ${
                                 isDone && !hasIssue
                                   ? "opacity-45 hover:opacity-100"
@@ -530,13 +543,14 @@ export default function KoReviewWorkspace() {
                         })
                       : /* ── Review mode rows ── */
                         (pageItems as typeof koReviewResults).map((item) => {
-                          const decision = koDecisions[item.key];
+                          const decisionKey = item.row_index != null ? `ri_${item.row_index}` : item.key;
+                          const decision = koDecisions[decisionKey];
                           const isResolved = decision === "accepted";
                           const noIssue = !item.has_issue;
 
                           return (
                             <tr
-                              key={item.key}
+                              key={item.row_index ?? item.key}
                               className={`group border-b border-border-subtle transition-all duration-200 ${
                                 isResolved
                                   ? "bg-emerald-50/40"
@@ -637,7 +651,7 @@ export default function KoReviewWorkspace() {
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        setKoDecision(item.key, "rejected")
+                                        setKoDecision(decisionKey, "rejected")
                                       }
                                       className="rounded-md p-1.5 text-text-muted hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
                                       title="Reject"
@@ -650,7 +664,7 @@ export default function KoReviewWorkspace() {
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        setKoDecision(item.key, "accepted")
+                                        setKoDecision(decisionKey, "accepted")
                                       }
                                       className="rounded-md p-1.5 text-primary hover:bg-primary-light hover:text-primary-dark transition-colors duration-200"
                                       title="Accept"
@@ -681,46 +695,33 @@ export default function KoReviewWorkspace() {
                       ? " issues"
                       : " items"}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center bg-white rounded-lg border border-border-subtle p-0.5 shadow-sm">
                     <button
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="px-2.5 py-1 rounded text-xs font-medium text-text-muted hover:bg-slate-100 active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+                      disabled={page <= 1}
+                      className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors duration-200 active:scale-[0.95] disabled:opacity-30"
                       aria-label="이전 페이지"
                     >
-                      Prev
+                      <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                        chevron_left
+                      </span>
                     </button>
-                    {Array.from(
-                      { length: Math.min(totalPages, 7) },
-                      (_, i) => {
-                        const p = i + 1;
-                        return (
-                          <button
-                            type="button"
-                            key={p}
-                            onClick={() => setPage(p)}
-                            className={`w-7 h-7 rounded text-xs font-medium active:scale-[0.97] ${
-                              p === page
-                                ? "bg-primary text-white"
-                                : "text-text-muted hover:bg-slate-100"
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        );
-                      },
-                    )}
+                    <span className="text-sm text-text-main font-bold px-3 min-w-[80px] text-center">
+                      {page} / {totalPages}
+                    </span>
                     <button
                       type="button"
                       onClick={() =>
                         setPage((p) => Math.min(totalPages, p + 1))
                       }
-                      disabled={page === totalPages}
-                      className="px-2.5 py-1 rounded text-xs font-medium text-text-muted hover:bg-slate-100 active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+                      disabled={page >= totalPages}
+                      className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-surface-pale transition-colors duration-200 active:scale-[0.95] disabled:opacity-30"
                       aria-label="다음 페이지"
                     >
-                      Next
+                      <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                        chevron_right
+                      </span>
                     </button>
                   </div>
                 </div>

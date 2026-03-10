@@ -34,10 +34,10 @@ export default function Header() {
       </div>
 
       {/* Step indicator */}
-      <div className="relative flex flex-col items-center">
+      <div className="flex flex-col items-center gap-1">
         <StepIndicator currentStep={currentStep} />
         {allSheetsMode && totalSheetCount > 1 && currentStep !== "idle" && (
-          <span className="absolute -bottom-1 text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
             Sheet {currentSheetIndex + 1}/{totalSheetCount}: {sheetQueue[currentSheetIndex] || ""}
           </span>
         )}

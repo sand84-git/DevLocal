@@ -31,7 +31,8 @@ export function useSheetQueue() {
           sheet_name: nextSheet,
           mode: s.mode,
           target_languages: ["en", "ja"],
-          row_limit: 0,
+          row_start: 0,
+          row_end: 0,
         });
         s.setSessionId(res.session_id);
       } catch {

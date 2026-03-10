@@ -156,7 +156,8 @@ export default function DataSourceScreen() {
         sheet_name: sheetName,
         mode,
         target_languages: ["en", "ja"],
-        row_limit: allSheetsMode ? 0 : rowEnd > 0 ? rowEnd - rowStart : 0,
+        row_start: allSheetsMode ? 0 : rowStart,
+        row_end: allSheetsMode ? 0 : rowEnd,
       });
       setSessionId(res.session_id);
     } catch (e) {

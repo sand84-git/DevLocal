@@ -28,6 +28,7 @@ export default function TranslationWorkspace() {
   const partialTranslations = useAppStore((s) => s.partialTranslations);
   const partialReviews = useAppStore((s) => s.partialReviews);
   const reviewResults = useAppStore((s) => s.reviewResults);
+  const failedRows = useAppStore((s) => s.failedRows);
   const reviewDecisions = useAppStore((s) => s.reviewDecisions);
   const setReviewDecision = useAppStore((s) => s.setReviewDecision);
   const selectedLang = useAppStore((s) => s.selectedLang);
@@ -63,7 +64,7 @@ export default function TranslationWorkspace() {
   }, [mode]);
 
   /* ── Row drip-feed animation ── */
-  const doneKeysRef = useRef(new Set<string>());
+  const doneIndicesRef = useRef(new Set<string>());
 
   /* ── Derived ── */
   const isComplete = progressPercent >= 100;
@@ -88,12 +89,14 @@ export default function TranslationWorkspace() {
 
   const availableLangs = useMemo(() => {
     if (mode === "review") {
-      return Array.from(new Set(reviewResults.map((r) => r.lang)));
+      const langs = new Set(reviewResults.map((r) => r.lang));
+      for (const f of failedRows) langs.add(f.lang);
+      return Array.from(langs);
     }
     const s = new Set<string>();
     for (const t of partialTranslations) s.add(t.lang);
     return Array.from(s).sort();
-  }, [mode, reviewResults, partialTranslations]);
+  }, [mode, reviewResults, failedRows, partialTranslations]);
 
   const activeLang = availableLangs.includes(selectedLang)
     ? selectedLang
@@ -106,7 +109,10 @@ export default function TranslationWorkspace() {
   const translationMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const t of partialTranslations) {
-      if (t.lang === activeLang) m.set(t.key, t.translated);
+      if (t.lang === activeLang) {
+        const mk = t.row_index != null ? `ri_${t.row_index}` : t.key;
+        m.set(mk, t.translated);
+      }
     }
     return m;
   }, [partialTranslations, activeLang]);
@@ -114,20 +120,23 @@ export default function TranslationWorkspace() {
   const reviewMap = useMemo(() => {
     const m = new Map<string, { reason: string; old_translation: string }>();
     for (const r of partialReviews) {
-      if (r.lang === activeLang)
-        m.set(r.key, { reason: r.reason, old_translation: r.old_translation });
+      if (r.lang === activeLang) {
+        const mk = r.row_index != null ? `ri_${r.row_index}` : r.key;
+        m.set(mk, { reason: r.reason, old_translation: r.old_translation });
+      }
     }
     return m;
   }, [partialReviews, activeLang]);
 
   /* ── Unified Rows ── */
-  type RowStatus = "pending" | "translating" | "translated" | "reviewing" | "reviewed";
+  type RowStatus = "pending" | "translating" | "translated" | "reviewing" | "reviewed" | "failed";
 
   const unifiedRows = useMemo(() => {
     if (mode === "review") {
-      return reviewResults
+      const reviewed = reviewResults
         .filter((r) => r.lang === activeLang)
         .map((r) => ({
+          rowKey: r.row_index != null ? `${r.row_index}_${r.lang}` : `${r.key}_${r.lang}`,
           key: r.key,
           lang: r.lang,
           original_ko: r.original_ko,
@@ -138,10 +147,26 @@ export default function TranslationWorkspace() {
           hasChange: r.old_translation !== r.translated,
           rowStatus: "reviewed" as RowStatus,
         }));
+      const failed = failedRows
+        .filter((f) => f.lang === activeLang)
+        .map((f) => ({
+          rowKey: f.row_index != null ? `${f.row_index}_${f.lang}_fail` : `${f.key}_${f.lang}_fail`,
+          key: f.key,
+          lang: f.lang,
+          original_ko: "",
+          old_translation: "",
+          translated: "",
+          reason: f.reason,
+          isDone: true,
+          hasChange: false,
+          rowStatus: "failed" as RowStatus,
+        }));
+      return [...reviewed, ...failed];
     }
     return originalRows.map((row) => {
-      const translated = translationMap.get(row.key);
-      const review = reviewMap.get(row.key);
+      const mk = row.row_index != null ? `ri_${row.row_index}` : row.key;
+      const translated = translationMap.get(mk);
+      const review = reviewMap.get(mk);
       const isDone = translated !== undefined;
       const hasReview = review !== undefined;
       const hasChange =
@@ -165,6 +190,7 @@ export default function TranslationWorkspace() {
       }
 
       return {
+        rowKey: row.row_index != null ? `${row.row_index}_${activeLang}` : `${row.key}_${activeLang}`,
         key: row.key,
         lang: activeLang,
         original_ko: row.korean,
@@ -176,7 +202,7 @@ export default function TranslationWorkspace() {
         rowStatus,
       };
     });
-  }, [mode, reviewResults, originalRows, translationMap, reviewMap, activeLang, agentPhase]);
+  }, [mode, reviewResults, failedRows, originalRows, translationMap, reviewMap, activeLang, agentPhase]);
 
   const totalPages = Math.max(1, Math.ceil(unifiedRows.length / PAGE_SIZE));
   const pageRows = unifiedRows.slice(
@@ -251,7 +277,7 @@ export default function TranslationWorkspace() {
 
   function handleApproveAllPage() {
     for (const row of pageRows) {
-      const dk = `${row.key}_${row.lang}`;
+      const dk = row.rowKey ?? `${row.key}_${row.lang}`;
       if (!reviewDecisions[dk]) setReviewDecision(dk, "accepted");
     }
   }
@@ -259,7 +285,7 @@ export default function TranslationWorkspace() {
   /* ── Undecided count (변경된 항목만 대상) ── */
   const undecidedCount = useMemo(() => {
     return reviewResults.filter((r) => {
-      const dk = `${r.key}_${r.lang}`;
+      const dk = r.row_index != null ? `${r.row_index}_${r.lang}` : `${r.key}_${r.lang}`;
       const hasChange = r.old_translation !== r.translated;
       return hasChange && !reviewDecisions[dk];
     }).length;
@@ -401,7 +427,16 @@ export default function TranslationWorkspace() {
             {/* ETA hint (translating mode only) */}
             {mode === "translating" && !cardComplete && (
               <p className="mt-2 text-xs text-text-muted text-center">
-                약 2~3분 소요될 수 있습니다
+                {(() => {
+                  const rows = originalRows.length || 1;
+                  const langs = availableLangs.length || 1;
+                  const translateMin = Math.ceil((rows * langs) / 25) * 0.5;
+                  const reviewMin = Math.ceil((rows * langs) / 25) * 0.5;
+                  const totalMin = Math.ceil(translateMin + reviewMin);
+                  return totalMin <= 1
+                    ? "약 1분 이내 소요 예상"
+                    : `약 ${totalMin}분 소요 예상`;
+                })()}
               </p>
             )}
 
@@ -750,14 +785,15 @@ export default function TranslationWorkspace() {
                 {/* Rows */}
                 <div className="overflow-y-auto custom-scrollbar flex-1 bg-white min-h-[400px]">
                   {pageRows.map((row) => {
-                    const rowKey = `${row.key}_${row.lang}`;
-                    const isUnchanged = mode === "review" && row.isDone && !row.hasChange;
+                    const rowKey = row.rowKey ?? `${row.key}_${row.lang}`;
+                    const isFailed = row.rowStatus === "failed";
+                    const isUnchanged = mode === "review" && row.isDone && !row.hasChange && !isFailed;
 
                     // Drip-feed row animation (translating mode only)
                     let showRowAnim = false;
                     if (mode === "translating" && row.isDone) {
-                      if (!doneKeysRef.current.has(rowKey)) {
-                        doneKeysRef.current.add(rowKey);
+                      if (!doneIndicesRef.current.has(rowKey)) {
+                        doneIndicesRef.current.add(rowKey);
                         showRowAnim = true;
                       }
                     }
@@ -766,7 +802,7 @@ export default function TranslationWorkspace() {
                       <div
                         key={rowKey}
                         className={`grid grid-cols-12 gap-4 px-6 py-5 border-b border-surface-pale items-center hover:bg-surface-pale/30 transition-all duration-200 group ${
-                          isUnchanged ? "opacity-45 hover:opacity-100" : ""
+                          isFailed ? "bg-red-50/60" : isUnchanged ? "opacity-45 hover:opacity-100" : ""
                         } ${showRowAnim ? "animate-row-fade-in" : ""}`}
                       >
                         {/* AI Note */}
@@ -867,7 +903,14 @@ export default function TranslationWorkspace() {
                         {/* Action / Status */}
                         <div className="col-span-2 flex justify-center">
                           {mode === "review" ? (
-                            row.hasChange ? (
+                            row.rowStatus === "failed" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-red-400 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-600">
+                                <span className="material-symbols-outlined text-sm" aria-hidden="true">
+                                  error
+                                </span>
+                                검수실패
+                              </span>
+                            ) : row.hasChange ? (
                               <div className="flex gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
                                 <button
                                   type="button"

@@ -228,11 +228,18 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => ({ currentSheetIndex: s.currentSheetIndex + 1 })),
   resetTranslationState: () =>
     set({
+      // KR Review (HITL 1)
+      koReviewResults: [],
+      koDecisions: {},
+      partialKoResults: [],
+      // Translation / Review (HITL 2)
       reviewResults: [],
       reviewDecisions: {},
       failedRows: [],
       partialTranslations: [],
       partialReviews: [],
+      // Streaming & Metrics
+      originalRows: [],
       chunkProgress: null,
       costSummary: null,
       cellsUpdated: 0,

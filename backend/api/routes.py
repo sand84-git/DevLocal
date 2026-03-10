@@ -104,8 +104,10 @@ def api_start(req: StartRequest):
         df = load_sheet_data(ws)
         df = ensure_tool_status_column(ws, df)
 
-        if req.row_limit > 0:
-            df = df.head(req.row_limit)
+        if req.row_start > 0 and req.row_end > 0:
+            df = df.iloc[req.row_start - 1 : req.row_end]
+        elif req.row_end > 0:
+            df = df.head(req.row_end)
 
         session.worksheet = ws
         session.df = df
@@ -125,11 +127,16 @@ def api_start(req: StartRequest):
         tone_and_manner = app_cfg.get("tone_and_manner") or get_tone_and_manner()
 
         # 초기 state 저장
+        # 각 행에 _row_index 부여 (중복 Key 구분용)
+        records = df.to_dict("records")
+        for idx, rec in enumerate(records):
+            rec["_row_index"] = idx
+
         session.initial_state = {
             "sheet_name": req.sheet_name,
             "mode": req.mode,
             "target_languages": req.target_languages,
-            "original_data": df.to_dict("records"),
+            "original_data": records,
             "backup_data": df.to_dict("records"),
             "ko_review_results": [],
             "translation_results": [],
@@ -216,8 +223,9 @@ def _run_initial_phase(session):
                 if orig_data:
                     rows = [
                         {"key": r.get(REQUIRED_COLUMNS["key"], ""),
-                         "korean": r.get(REQUIRED_COLUMNS["korean"], "")}
-                        for r in orig_data
+                         "korean": r.get(REQUIRED_COLUMNS["korean"], ""),
+                         "row_index": r.get("_row_index", i)}
+                        for i, r in enumerate(orig_data)
                     ]
                     node_emitter("original_data", {"rows": rows})
 
@@ -244,21 +252,38 @@ def _run_initial_phase(session):
                 result.get("total_reasoning_tokens", 0),
                 result.get("total_cached_tokens", 0),
             )
-        ko_result_map = {r["key"]: r for r in ko_results_raw}
+        # row_index 기반 매핑 (중복 Key 대응)
+        ko_result_by_ri = {r.get("row_index"): r for r in ko_results_raw if r.get("row_index") is not None}
+        # key 기반 fallback (row_index 없는 경우)
+        ko_result_by_key: dict[str, list] = {}
+        for r in ko_results_raw:
+            if r.get("row_index") is None:
+                ko_result_by_key.setdefault(r["key"], []).append(r)
+        key_consume: dict[str, int] = {}
+
         original_data = result.get("original_data", [])
         ko_results = []
         for row in original_data:
             key = row.get(REQUIRED_COLUMNS["key"], "")
             ko_text = row.get(REQUIRED_COLUMNS["korean"], "")
-            if key in ko_result_map:
-                ko_results.append(ko_result_map[key])
+            ri = row.get("_row_index")
+            if ri is not None and ri in ko_result_by_ri:
+                ko_results.append(ko_result_by_ri[ri])
+            elif key in ko_result_by_key:
+                idx = key_consume.get(key, 0)
+                items = ko_result_by_key[key]
+                if idx < len(items):
+                    ko_results.append(items[idx])
+                    key_consume[key] = idx + 1
+                else:
+                    ko_results.append({
+                        "key": key, "original": ko_text, "revised": ko_text,
+                        "comment": "", "has_issue": False, "row_index": ri,
+                    })
             else:
                 ko_results.append({
-                    "key": key,
-                    "original": ko_text,
-                    "revised": ko_text,
-                    "comment": "",
-                    "has_issue": False,
+                    "key": key, "original": ko_text, "revised": ko_text,
+                    "comment": "", "has_issue": False, "row_index": ri,
                 })
 
         # KR diff 리포트 생성
