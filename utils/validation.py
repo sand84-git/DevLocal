@@ -6,32 +6,26 @@ from config.constants import TAG_PATTERNS
 from config.glossary import get_glossary
 
 
-def _normalize_escapes(text: str) -> str:
-    """실제 개행/탭 → 리터럴 \\n \\t 정규화 (태그 비교용)"""
-    return text.replace("\n", "\\n").replace("\t", "\\t")
-
-
 def validate_tags(source_ko: str, translated: str) -> dict:
     """
-    정규식으로 태그 개수/문자열 동일성 검증.
-    원본(ko)에 존재하는 태그가 번역 결과에도 동일하게 존재하는지 확인.
+    원문과 번역문의 포맷팅 태그 일치 여부를 정규식으로 검증.
 
-    Returns:
-        {"valid": bool, "errors": [str]}
+    Returns: {"valid": bool, "errors": [str]}
     """
     errors = []
-    # 실제 개행/탭과 리터럴 \\n \\t를 동일하게 취급
-    norm_source = _normalize_escapes(source_ko)
-    norm_translated = _normalize_escapes(translated)
+
+    # 리터럴 \\n, \\t 를 통일 (실제 개행/탭이 섞인 경우 보정)
+    source_norm = source_ko.replace("\n", "\\n").replace("\t", "\\t")
+    trans_norm = translated.replace("\n", "\\n").replace("\t", "\\t")
 
     for pattern in TAG_PATTERNS:
-        source_tags = re.findall(pattern, norm_source)
-        translated_tags = re.findall(pattern, norm_translated)
+        source_tags = sorted(re.findall(pattern, source_norm))
+        trans_tags = sorted(re.findall(pattern, trans_norm))
 
-        if sorted(source_tags) != sorted(translated_tags):
+        if source_tags != trans_tags:
             errors.append(
                 f"태그 불일치 [{pattern}]: "
-                f"원본={source_tags}, 번역={translated_tags}"
+                f"원문 {source_tags} ≠ 번역 {trans_tags}"
             )
 
     return {"valid": len(errors) == 0, "errors": errors}
@@ -39,38 +33,46 @@ def validate_tags(source_ko: str, translated: str) -> dict:
 
 def apply_glossary_postprocess(text: str, lang: str) -> str:
     """
-    Glossary 강제 치환 (후처리).
-    JA 등급명 등 고정 매핑이 있는 경우 파이썬 replace()로 강제 적용.
+    Glossary 강제 치환 — 번역 결과에서 오역된 Glossary 용어를 교정.
+    JA 등급명 등 의역 금지 항목에 대해 str.replace() 적용.
     """
     glossary = get_glossary()
-    if lang not in glossary:
+    lang_glossary = glossary.get(lang, {})
+
+    if not lang_glossary:
         return text
 
-    for ko_term, target_term in glossary[lang].items():
-        # 한국어 원어가 번역문에 남아있는 경우 치환
-        text = text.replace(ko_term, target_term)
+    # 역방향 매핑: target → source_ko (잘못된 번역 감지용은 아님)
+    # 정방향: source_ko → target (원문에 한국어가 남아있으면 치환)
+    for ko_term, target_term in lang_glossary.items():
+        if ko_term in text:
+            text = text.replace(ko_term, target_term)
 
     return text
 
 
-def check_glossary_compliance(text: str, lang: str, source_ko: str) -> dict:
+def check_glossary_compliance(
+    text: str, lang: str, source_ko: str
+) -> dict:
     """
-    Glossary 준수 여부 검증.
-    원문에 Glossary 키워드가 있는 경우, 번역문에 대응 번역이 존재하는지 확인.
+    번역문에 Glossary 용어가 올바르게 반영되었는지 검증.
 
-    Returns:
-        {"compliant": bool, "violations": [str]}
+    원문(source_ko)에 Glossary의 한국어 키가 있으면,
+    번역문에 대응하는 타겟 용어가 있어야 함.
+
+    Returns: {"compliant": bool, "violations": [str]}
     """
     glossary = get_glossary()
-    if lang not in glossary:
-        return {"compliant": True, "violations": []}
-
+    lang_glossary = glossary.get(lang, {})
     violations = []
 
-    for ko_term, target_term in glossary[lang].items():
+    if not lang_glossary:
+        return {"compliant": True, "violations": []}
+
+    for ko_term, target_term in lang_glossary.items():
         if ko_term in source_ko and target_term not in text:
             violations.append(
-                f"Glossary 위반: '{ko_term}' → '{target_term}' 미적용"
+                f"'{ko_term}' → '{target_term}' 미반영"
             )
 
     return {"compliant": len(violations) == 0, "violations": violations}

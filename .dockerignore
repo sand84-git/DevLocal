@@ -29,8 +29,10 @@ requirements.txt
 .idea/
 .DS_Store
 
-# Docs / Plans
-docs/
+# Docs / Plans (docs/는 USER_GUIDE.md 서빙에 필요하므로 유지)
+docs/plans/
 tasks/
 stitch/
-*.md
+CLAUDE.md
+DEVELOPMENT_PLAN.md
+PRD_v2.md

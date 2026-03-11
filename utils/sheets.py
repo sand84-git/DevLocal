@@ -1,148 +1,178 @@
-"""Google Sheets 연동 모듈 — gspread 래퍼 (Batch Read/Write, 인증)"""
+"""Google Sheets 유틸리티 — gspread Batch Read/Write + Exponential Backoff"""
 
-import re
-import time
-import datetime
 import io
-import pandas as pd
+import logging
+import os
+import time
+from datetime import datetime
+from pathlib import Path
+
 import gspread
+import pandas as pd
 from google.oauth2.service_account import Credentials
+
 from backend.config import get_gcp_credentials
-from config.constants import FORBIDDEN_SHEETS, TOOL_STATUS_COLUMN
+from config.constants import FORBIDDEN_SHEETS, REQUIRED_COLUMNS, TOOL_STATUS_COLUMN
+
+logger = logging.getLogger("devlocal.sheets")
+
+# ── Retry 설정 ────────────────────────────────────────────────────────
+
+MAX_RETRIES = 5
+BASE_DELAY = 1  # seconds
 
 
-SCOPES = [
+def _retry_with_backoff(fn, *args, **kwargs):
+    """Exponential backoff wrapper for gspread API calls."""
+    for attempt in range(MAX_RETRIES):
+        try:
+            return fn(*args, **kwargs)
+        except gspread.exceptions.APIError as e:
+            status = e.response.status_code if hasattr(e, "response") else 0
+            if status == 429 or status >= 500:
+                delay = BASE_DELAY * (2 ** attempt)
+                logger.warning(
+                    "API rate limit/error (attempt %d/%d), retrying in %ds: %s",
+                    attempt + 1, MAX_RETRIES, delay, e,
+                )
+                time.sleep(delay)
+            else:
+                raise
+    return fn(*args, **kwargs)  # final attempt without catch
+
+
+# ── 인증 및 연결 ──────────────────────────────────────────────────────
+
+_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
 
-# Exponential backoff 설정
-MAX_RETRIES = 5
-BASE_DELAY = 1  # 초
 
-
-def _retry_with_backoff(func, *args, **kwargs):
-    """Exponential backoff 재시도 래퍼"""
-    for attempt in range(MAX_RETRIES):
-        try:
-            return func(*args, **kwargs)
-        except gspread.exceptions.APIError as e:
-            if e.response.status_code == 429 and attempt < MAX_RETRIES - 1:
-                delay = BASE_DELAY * (2 ** attempt)
-                time.sleep(delay)
-            else:
-                raise
+def _get_client() -> gspread.Client:
+    """GCP 서비스 계정 인증 → gspread Client."""
+    creds_dict = get_gcp_credentials()
+    credentials = Credentials.from_service_account_info(creds_dict, scopes=_SCOPES)
+    return gspread.authorize(credentials)
 
 
 def connect_to_sheet(url: str) -> gspread.Spreadsheet:
-    """GCP 서비스 계정 인증 + 스프레드시트 연결"""
-    creds_info = get_gcp_credentials()
-    creds = Credentials.from_service_account_info(dict(creds_info), scopes=SCOPES)
-    client = gspread.authorize(creds)
-    spreadsheet = _retry_with_backoff(client.open_by_url, url)
-    return spreadsheet
+    """스프레드시트 URL로 연결."""
+    client = _get_client()
+    return _retry_with_backoff(client.open_by_url, url)
 
 
 def get_bot_email() -> str:
-    """서비스 계정 봇 이메일 반환"""
-    creds_info = get_gcp_credentials()
-    return creds_info.get("client_email", "")
+    """서비스 계정 이메일 반환."""
+    creds_dict = get_gcp_credentials()
+    return creds_dict.get("client_email", "")
 
 
 def extract_project_name(spreadsheet: gspread.Spreadsheet) -> str:
-    """첫 번째 시트에서 'project:' 포함 셀을 찾아 프로젝트명 추출"""
-    try:
-        first_ws = spreadsheet.sheet1
-        all_values = _retry_with_backoff(first_ws.get_all_values)
-        for row in all_values:
-            for cell in row:
-                match = re.search(r'project\s*:\s*(.+)', cell, re.IGNORECASE)
-                if match:
-                    return match.group(1).strip()
-    except Exception:
-        pass
-    return ""
+    """스프레드시트 제목에서 프로젝트명 추출."""
+    return spreadsheet.title
 
 
 def get_worksheet_names(spreadsheet: gspread.Spreadsheet) -> list[str]:
-    """금지 시트 필터링된 시트 목록 반환"""
-    all_sheets = [ws.title for ws in spreadsheet.worksheets()]
-    return [name for name in all_sheets if name not in FORBIDDEN_SHEETS]
+    """시트 이름 목록 반환 (FORBIDDEN_SHEETS 제외)."""
+    worksheets = _retry_with_backoff(spreadsheet.worksheets)
+    return [
+        ws.title
+        for ws in worksheets
+        if ws.title not in FORBIDDEN_SHEETS
+    ]
 
+
+# ── 데이터 로드 ──────────────────────────────────────────────────────
 
 def load_sheet_data(worksheet: gspread.Worksheet) -> pd.DataFrame:
-    """1회 전체 로드 → DataFrame 변환 (헤더 이름 기반).
-    빈 헤더나 중복 헤더가 있어도 안전하게 처리."""
-    all_values = _retry_with_backoff(worksheet.get_all_values)
-    if not all_values:
-        return pd.DataFrame()
-
-    headers = all_values[0]
-    # 빈 헤더 컬럼 제거 (인덱스 기록)
-    valid_cols = [(i, h) for i, h in enumerate(headers) if h.strip()]
-    clean_headers = [h for _, h in valid_cols]
-    valid_indices = [i for i, _ in valid_cols]
-
-    rows = []
-    for row in all_values[1:]:
-        rows.append([row[i] if i < len(row) else "" for i in valid_indices])
-
-    df = pd.DataFrame(rows, columns=clean_headers)
+    """시트 전체를 1회 벌크 로드 → DataFrame 변환."""
+    records = _retry_with_backoff(worksheet.get_all_records)
+    df = pd.DataFrame(records)
+    # 빈 문자열 → NaN 변환하지 않음 (원본 보존)
     return df
 
 
-def ensure_tool_status_column(worksheet: gspread.Worksheet, df: pd.DataFrame) -> pd.DataFrame:
-    """Tool_Status 컬럼 존재 확인/생성"""
-    headers = _retry_with_backoff(worksheet.row_values, 1)
-
-    if TOOL_STATUS_COLUMN not in headers:
-        col_index = len(headers) + 1
-        _retry_with_backoff(worksheet.update_cell, 1, col_index, TOOL_STATUS_COLUMN)
+def ensure_tool_status_column(
+    worksheet: gspread.Worksheet, df: pd.DataFrame
+) -> pd.DataFrame:
+    """Tool_Status 컬럼 없으면 시트+DataFrame 양쪽에 추가."""
+    if TOOL_STATUS_COLUMN not in df.columns:
         df[TOOL_STATUS_COLUMN] = ""
-    elif TOOL_STATUS_COLUMN not in df.columns:
-        df[TOOL_STATUS_COLUMN] = ""
-
+        # 시트에도 헤더 추가
+        col_idx = len(df.columns)
+        _retry_with_backoff(
+            worksheet.update_cell, 1, col_idx, TOOL_STATUS_COLUMN
+        )
+        logger.info("Tool_Status 컬럼 추가 (col %d)", col_idx)
     return df
 
+
+# ── 백업 ─────────────────────────────────────────────────────────────
+
+def create_backup_csv(df: pd.DataFrame, sheet_name: str) -> tuple[str, bytes]:
+    """DataFrame → (파일명, CSV bytes) 반환. UTF-8-SIG 인코딩."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"backup_{sheet_name}_{timestamp}.csv"
+    buf = io.BytesIO()
+    df.to_csv(buf, index=False, encoding="utf-8-sig")
+    return filename, buf.getvalue()
+
+
+def save_backup_to_folder(
+    df: pd.DataFrame, sheet_name: str, folder: str = "./backups"
+) -> str:
+    """백업 CSV를 로컬 폴더에 저장. 반환: 파일 경로."""
+    Path(folder).mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"backup_{sheet_name}_{timestamp}.csv"
+    filepath = os.path.join(folder, filename)
+    df.to_csv(filepath, index=False, encoding="utf-8-sig")
+    logger.info("백업 저장: %s", filepath)
+    return filepath
+
+
+# ── Batch Update / Format ────────────────────────────────────────────
 
 def batch_update_sheet(
     worksheet: gspread.Worksheet,
     updates: list[dict],
     df: pd.DataFrame,
-):
+) -> None:
     """
-    Batch Write 래퍼 — 개별 cell.update() 금지, 일괄 업데이트.
+    업데이트 목록을 gspread batch_update로 일괄 반영.
 
-    updates: [{"row_index": int (0-based in df), "column_name": str, "value": str}, ...]
-    df: 현재 DataFrame (헤더 이름 → 컬럼 위치 매핑용)
+    updates 형식: [{"row_index": int, "column_name": str, "value": str}, ...]
+    row_index: 0-based DataFrame 인덱스 → 시트 행은 +2 (헤더 + 1-based)
     """
     if not updates:
         return
 
-    headers = list(df.columns)
     cells = []
+    columns = list(df.columns)
 
-    for upd in updates:
-        row_idx = upd["row_index"]
-        col_name = upd["column_name"]
-        value = upd["value"]
+    for u in updates:
+        row_idx = u["row_index"]
+        col_name = u["column_name"]
 
-        if col_name not in headers:
+        if col_name not in columns:
             continue
 
-        col_idx = headers.index(col_name) + 1  # 1-based
-        sheet_row = row_idx + 2  # +1 for 0-based, +1 for header row
-        cells.append(gspread.Cell(row=sheet_row, col=col_idx, value=value))
+        col_idx = columns.index(col_name) + 1  # 1-based
+        sheet_row = row_idx + 2  # 헤더 + 0-based → 1-based
+
+        cells.append(gspread.Cell(sheet_row, col_idx, u["value"]))
 
     if cells:
         _retry_with_backoff(worksheet.update_cells, cells)
+        logger.info("Batch update: %d cells", len(cells))
 
 
-# 셀 하이라이트 색상 정의 — Sky Blue 팔레트
-HIGHLIGHT_COLORS = {
-    "translation": {"red": 0.878, "green": 0.961, "blue": 0.996},    # #E0F5FE primary-light
-    "review_failed": {"red": 0.996, "green": 0.886, "blue": 0.886},  # #FEE2E2 diff-removed
-    "completed": {"red": 0.863, "green": 0.988, "blue": 0.906},      # #DCFCE7 diff-added
+# 색상 매핑
+_COLOR_MAP = {
+    "translation": {"red": 0.878, "green": 0.961, "blue": 0.992},  # #E0F5FE (연파랑)
+    "review_failed": {"red": 0.996, "green": 0.886, "blue": 0.886},  # #FEE2E2 (연빨강)
+    "completed": {"red": 0.863, "green": 0.988, "blue": 0.906},  # #DCFCE7 (연초록)
 }
 
 
@@ -150,37 +180,38 @@ def batch_format_cells(
     worksheet: gspread.Worksheet,
     updates: list[dict],
     df: pd.DataFrame,
-):
+) -> None:
     """
-    변경된 셀에 배경색 일괄 적용 (Google Sheets API batch_update).
+    업데이트된 셀에 배경색 적용 (Sheets API batch).
 
-    updates 내 change_type 필드에 따라 색상 적용:
-    - "translation": 연한 하늘 (#E0F5FE)
-    - "review_failed": 연한 빨강 (#FEE2E2)
-    - "completed": 연한 초록 (#DCFCE7)
+    change_type: "translation" | "review_failed" | "completed"
     """
-    headers = list(df.columns)
+    if not updates:
+        return
+
+    columns = list(df.columns)
     requests = []
+    sheet_id = worksheet.id
 
-    for upd in updates:
-        change_type = upd.get("change_type", "")
-        if not change_type or change_type not in HIGHLIGHT_COLORS:
+    for u in updates:
+        change_type = u.get("change_type", "")
+        color = _COLOR_MAP.get(change_type)
+        if not color:
             continue
 
-        row_idx = upd["row_index"]
-        col_name = upd["column_name"]
+        row_idx = u["row_index"]
+        col_name = u["column_name"]
 
-        if col_name not in headers:
+        if col_name not in columns:
             continue
 
-        col_idx = headers.index(col_name)
-        sheet_row = row_idx + 1  # 0-based for API (header = row 0)
+        col_idx = columns.index(col_name)
+        sheet_row = row_idx + 1  # 0-based (헤더 제외, API는 0-based)
 
-        color = HIGHLIGHT_COLORS[change_type]
         requests.append({
             "repeatCell": {
                 "range": {
-                    "sheetId": worksheet.id,
+                    "sheetId": sheet_id,
                     "startRowIndex": sheet_row,
                     "endRowIndex": sheet_row + 1,
                     "startColumnIndex": col_idx,
@@ -200,33 +231,4 @@ def batch_format_cells(
             worksheet.spreadsheet.batch_update,
             {"requests": requests},
         )
-
-
-def create_backup_csv(df: pd.DataFrame, sheet_name: str) -> tuple[str, bytes]:
-    """
-    백업 CSV 생성 — 파일명과 바이트 데이터 반환.
-    Streamlit Cloud에서는 로컬 파일이 초기화되므로 바이트로 반환하여
-    st.download_button + st.session_state에 보관.
-    """
-    now = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    filename = f"{sheet_name}_backup_{now}.csv"
-
-    buffer = io.BytesIO()
-    df.to_csv(buffer, index=False, encoding="utf-8-sig")
-    csv_bytes = buffer.getvalue()
-
-    return filename, csv_bytes
-
-
-def save_backup_to_folder(
-    df: pd.DataFrame, sheet_name: str, folder: str = "./backups"
-) -> str:
-    """백업 CSV를 로컬 폴더에 자동 저장. 폴더가 없으면 생성."""
-    import os
-
-    os.makedirs(folder, exist_ok=True)
-    now = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    filename = f"{sheet_name}_backup_{now}.csv"
-    filepath = os.path.join(folder, filename)
-    df.to_csv(filepath, index=False, encoding="utf-8-sig")
-    return filepath
+        logger.info("Batch format: %d cells", len(requests))

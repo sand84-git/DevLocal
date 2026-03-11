@@ -6,3 +6,4 @@ __pycache__/
 *.csv
 .DS_Store
 .app_config.json
+.claude/

@@ -86,7 +86,7 @@ def writer_node(state: LocalizationState) -> dict:
 
     changed_count = sum(1 for u in updates if u.get("change_type") == "translation")
     unchanged_count = len(review_results) - changed_count
-    fail_count = len(failed_keys)
+    fail_count = len(failed_rows)
     logs.append(
         f"[Node 5] 업데이트 준비: 변경 {changed_count}건, 변경없음 {unchanged_count}건, 실패 {fail_count}건"
     )

@@ -1,6 +1,7 @@
-"""Diff 리포트 생성 (CSV)"""
+"""Diff 리포트 CSV 생성 — 한국어 교정 / 번역 변경 리포트"""
 
 import io
+
 import pandas as pd
 
 
@@ -9,69 +10,66 @@ def generate_ko_diff_report(
     revised_rows: list[dict],
 ) -> tuple[pd.DataFrame, bytes]:
     """
-    한국어 변경 리포트 생성.
-    original_rows, revised_rows: [{"Key": str, "Korean(ko)": str}, ...]
+    한국어 교정 Diff 리포트 생성.
 
-    변경된 행만 추출하여 DataFrame + CSV 바이트 반환.
+    original_rows: [{"Key": str, "Korean(ko)": str}, ...]
+    revised_rows:  [{"Key": str, "Korean(ko)": str}, ...]
+
+    변경된 행만 포함. 반환: (DataFrame, csv_bytes)
     """
-    diffs = []
-    original_map = {row["Key"]: row["Korean(ko)"] for row in original_rows}
-    revised_map = {row["Key"]: row["Korean(ko)"] for row in revised_rows}
+    original_map = {r["Key"]: r.get("Korean(ko)", "") for r in original_rows}
 
-    for key, revised_text in revised_map.items():
-        original_text = original_map.get(key, "")
-        if original_text != revised_text:
-            diffs.append({
+    diff_records = []
+    for row in revised_rows:
+        key = row.get("Key", "")
+        revised = row.get("Korean(ko)", "")
+        original = original_map.get(key, "")
+
+        if original != revised:
+            diff_records.append({
                 "Key": key,
-                "기존 한국어": original_text,
-                "수정 제안": revised_text,
+                "기존 한국어": original,
+                "교정 한국어": revised,
             })
 
-    df = pd.DataFrame(diffs)
-
-    buffer = io.BytesIO()
-    df.to_csv(buffer, index=False, encoding="utf-8-sig")
-    csv_bytes = buffer.getvalue()
-
-    return df, csv_bytes
+    df = pd.DataFrame(diff_records)
+    buf = io.BytesIO()
+    df.to_csv(buf, index=False, encoding="utf-8-sig")
+    return df, buf.getvalue()
 
 
 def generate_translation_diff_report(
-    old_translations: list[dict],
-    new_translations: list[dict],
+    old_trans: list[dict],
+    new_trans: list[dict],
 ) -> tuple[pd.DataFrame, bytes]:
     """
-    번역 변경 리포트 생성 (Step 3 HITL 2용).
-    각 항목: {"Key": str, "lang": str, "old": str, "new": str, "reason": str}
+    번역 변경 Diff 리포트 생성.
 
-    변경된 항목만 추출하여 DataFrame + CSV 바이트 반환.
+    old_trans: [{"Key": str, "lang": str, "old": str}, ...]
+    new_trans: [{"Key": str, "lang": str, "new": str, "reason": str}, ...]
+
+    반환: (DataFrame, csv_bytes)
     """
-    diffs = []
+    # old_trans와 new_trans를 Key+lang으로 매칭
+    old_map = {(r["Key"], r["lang"]): r.get("old", "") for r in old_trans}
 
-    old_map = {}
-    for row in old_translations:
-        old_map[(row["Key"], row["lang"])] = row.get("old", "")
-
-    for row in new_translations:
-        key = row["Key"]
-        lang = row["lang"]
-        new_text = row.get("new", "")
-        old_text = old_map.get((key, lang), "")
+    diff_records = []
+    for row in new_trans:
+        key = row.get("Key", "")
+        lang = row.get("lang", "")
+        new_val = row.get("new", "")
         reason = row.get("reason", "")
+        old_val = old_map.get((key, lang), "")
 
-        if old_text != new_text:
-            diffs.append({
-                "Key": key,
-                "언어": lang.upper(),
-                "기존 번역": old_text,
-                "새 번역": new_text,
-                "변경 사유/내역": reason,
-            })
+        diff_records.append({
+            "Key": key,
+            "언어": lang,
+            "기존 번역": old_val,
+            "새 번역": new_val,
+            "변경 사유/내역": reason,
+        })
 
-    df = pd.DataFrame(diffs)
-
-    buffer = io.BytesIO()
-    df.to_csv(buffer, index=False, encoding="utf-8-sig")
-    csv_bytes = buffer.getvalue()
-
-    return df, csv_bytes
+    df = pd.DataFrame(diff_records)
+    buf = io.BytesIO()
+    df.to_csv(buf, index=False, encoding="utf-8-sig")
+    return df, buf.getvalue()
