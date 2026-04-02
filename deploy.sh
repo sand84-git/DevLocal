@@ -46,7 +46,7 @@ ENV_FILE=$(mktemp)
 trap 'rm -f "$ENV_FILE"' EXIT
 
 python3 -c "
-import json, yaml, sys
+import json, sys
 env = {
     'XAI_API_KEY': '''${XAI_API_KEY}''',
     'GCP_SERVICE_ACCOUNT_JSON': json.dumps(json.load(open('$GCP_JSON_PATH')))

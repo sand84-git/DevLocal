@@ -23,6 +23,7 @@ export function useSheetQueue() {
       const nextSheet = sheetQueue[currentSheetIndex + 1];
       s.advanceSheetQueue();
       s.resetTranslationState();
+      s.setSessionId(null);         // 구 SSE 즉시 종료 — late "done" 이벤트 수신 방지
       s.setCurrentStep("loading");
 
       try {
@@ -35,9 +36,11 @@ export function useSheetQueue() {
           row_end: 0,
         });
         s.setSessionId(res.session_id);
-      } catch {
-        s.setCurrentStep("idle");
-        s.setAllSheetsMode(false);
+      } catch (err) {
+        s.addLog(
+          `[ERROR] Sheet "${nextSheet}" failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        s.setCurrentStep("done"); // 다음 시트로 자동 진행
       }
     }, 2000);
 

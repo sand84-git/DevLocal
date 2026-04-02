@@ -207,6 +207,8 @@ export function useSSE() {
 
       /* ── 완료 — 의도적 종료 ── */
       es.addEventListener("done", () => {
+        // Stale "done" 이벤트 무시 (구 세션에서 늦게 도착한 경우)
+        if (useAppStore.getState().sessionId !== sessionId) return;
         closedIntentionallyRef.current = true;
         store().setCurrentStep("done");
         store().setSseStatus("disconnected");
