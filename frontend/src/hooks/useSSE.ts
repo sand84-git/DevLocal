@@ -227,6 +227,10 @@ export function useSSE() {
           closedIntentionallyRef.current = true;
           store().setSseStatus("disconnected");
           es.close();
+          // All Sheets 모드: 에러 발생해도 큐 진행 (다음 시트로 이동)
+          if (useAppStore.getState().allSheetsMode) {
+            store().setCurrentStep("done");
+          }
         }
       });
 

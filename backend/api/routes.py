@@ -102,6 +102,14 @@ def api_start(req: StartRequest):
         session.spreadsheet = connect_to_sheet(req.sheet_url)
         ws = session.spreadsheet.worksheet(req.sheet_name)
         df = load_sheet_data(ws)
+
+        # 필수 컬럼 검증 — 누락 시 그래프 실행 전 즉시 실패
+        missing = [col for col in REQUIRED_COLUMNS.values() if col not in df.columns]
+        if missing:
+            raise ValueError(
+                f"시트 '{req.sheet_name}'에 필수 컬럼이 없습니다: {', '.join(missing)}"
+            )
+
         df = ensure_tool_status_column(ws, df)
 
         if req.row_start > 0 and req.row_end > 0:
